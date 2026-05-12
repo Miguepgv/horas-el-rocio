@@ -1156,3 +1156,61 @@
   color: #64748b;
 }
 
+.install-app-card {
+  gap: 0.65rem;
+}
+
+.install-app-lead {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.install-app-primary {
+  margin-top: 0;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.install-app-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.install-app-ios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.install-app-ios-btn {
+  align-self: flex-start;
+}
+
+.install-steps {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.install-steps li {
+  margin-bottom: 0.4rem;
+}
+
+.install-steps li:last-child {
+  margin-bottom: 0;
+}
+
+.install-app-android-hint {
+  margin: 0;
+}
+

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo.jsx'
 import ManageAdminsModal from '../components/ManageAdminsModal.jsx'
+import InstallAppHint from '../components/InstallAppHint.jsx'
 import { supabase } from '../lib/supabase'
 import { resolveAdminAccess } from '../lib/admin.js'
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
@@ -412,6 +413,8 @@ export default function InicioPage({ session, onSignOut }) {
           </>
         ) : null}
       </p>
+
+      <InstallAppHint />
 
       {horarioBanner ? (
         <div className="banner horario-aviso-banner" role="status">

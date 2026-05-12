@@ -1,0 +1,19 @@
+{
+  "name": "Horas — El Rocío",
+  "short_name": "Horas",
+  "description": "Horario y fichaje — El Rocío",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f6f4f1",
+  "theme_color": "#b45309",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
