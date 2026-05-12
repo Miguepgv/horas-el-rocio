@@ -15,6 +15,17 @@ function isIOSDevice() {
   return false
 }
 
+function isAndroidDevice() {
+  if (typeof navigator === 'undefined') return false
+  return /Android/i.test(navigator.userAgent || '')
+}
+
+function readApkUrl() {
+  const raw = String(import.meta.env.VITE_ANDROID_APK_URL ?? '').trim()
+  if (!raw || !/^https:\/\//i.test(raw)) return ''
+  return raw
+}
+
 export default function InstallAppHint() {
   const [standalone, setStandalone] = useState(() => isStandalone())
   const [modalOpen, setModalOpen] = useState(false)
@@ -22,6 +33,8 @@ export default function InstallAppHint() {
   const [installing, setInstalling] = useState(false)
 
   const ios = useMemo(() => isIOSDevice(), [])
+  const android = useMemo(() => isAndroidDevice(), [])
+  const apkUrl = useMemo(() => readApkUrl(), [])
 
   useEffect(() => {
     setStandalone(isStandalone())
@@ -76,16 +89,38 @@ export default function InstallAppHint() {
 
   if (standalone) return null
 
+  const showApkOnAndroid = android && apkUrl
+
   return (
     <>
       <div className="install-app-trigger-wrap">
-        <button
-          type="button"
-          className="install-app-open-btn"
-          onClick={() => setModalOpen(true)}
-        >
-          Instalar aplicación
-        </button>
+        {showApkOnAndroid ? (
+          <div className="install-app-trigger-row">
+            <a
+              href={apkUrl}
+              className="install-app-apk-btn"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Descargar APK
+            </a>
+            <button
+              type="button"
+              className="install-app-open-btn install-app-open-btn-secondary"
+              onClick={() => setModalOpen(true)}
+            >
+              O instalar desde el navegador
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="install-app-open-btn"
+            onClick={() => setModalOpen(true)}
+          >
+            Instalar aplicación
+          </button>
+        )}
       </div>
 
       {modalOpen ? (
@@ -106,10 +141,28 @@ export default function InstallAppHint() {
               Instalar aplicación
             </h2>
             <div className="install-app-modal-body">
-              <p className="install-app-modal-line">
-                <strong>Android:</strong> botón <em>Instalar</em> o menú <strong>⋮</strong> →{' '}
-                <em>Añadir a pantalla de inicio</em> / <em>Instalar aplicación</em>.
-              </p>
+              {showApkOnAndroid ? (
+                <>
+                  <p className="install-app-modal-line">
+                    <strong>Android (archivo .apk):</strong> pulsa <strong>Descargar APK</strong>.
+                    Si avisa de origen desconocido, acepta o permite instalar desde el navegador o
+                    desde «Archivos» en Ajustes.
+                  </p>
+                  <a
+                    href={apkUrl}
+                    className="install-app-modal-install install-app-modal-install-link"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Descargar APK
+                  </a>
+                </>
+              ) : (
+                <p className="install-app-modal-line">
+                  <strong>Android</strong> (desde el navegador): menú <strong>⋮</strong> →{' '}
+                  <em>Instalar aplicación</em> o <em>Añadir a pantalla de inicio</em>.
+                </p>
+              )}
               <p className="install-app-modal-line">
                 <strong>Windows</strong> (Chrome o Edge): botón <em>Instalar</em> en la barra o
                 menú <strong>⋮</strong> → <em>Instalar aplicación</em>.
@@ -125,7 +178,7 @@ export default function InstallAppHint() {
             {canNativeInstall ? (
               <button
                 type="button"
-                className="install-app-modal-install"
+                className="install-app-modal-install install-app-modal-install-pwa"
                 disabled={installing}
                 onClick={runInstall}
               >

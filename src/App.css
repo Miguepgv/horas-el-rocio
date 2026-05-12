@@ -1160,6 +1160,33 @@
   margin: 0 0 0.75rem;
 }
 
+.install-app-trigger-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.install-app-apk-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.install-app-apk-btn:hover {
+  filter: brightness(1.05);
+}
+
 .install-app-open-btn {
   display: block;
   width: 100%;
@@ -1181,6 +1208,17 @@
 .install-app-open-btn:hover {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.install-app-open-btn-secondary {
+  background: var(--surface);
+  color: var(--text-h);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.install-app-open-btn-secondary:hover {
+  background: color-mix(in srgb, var(--border) 35%, var(--surface));
 }
 
 .install-app-modal-root {
@@ -1233,6 +1271,20 @@
 .install-app-modal-install:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+a.install-app-modal-install-link {
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.25;
+}
+
+.install-app-modal-body .install-app-modal-install {
+  margin-bottom: 0;
+}
+
+.install-app-modal-install-pwa {
+  margin-top: 0;
 }
 
 .install-app-modal-actions {
