@@ -1,0 +1,374 @@
+nombre,correo,fecha,turno,entrada,salida,cruza,descanso
+MARIA JOSE,,2026-05-16,1,12:00,,false,false
+MARIA JOSE,,2026-05-17,1,12:00,,false,false
+MARIA JOSE,,2026-05-18,1,12:00,,false,false
+MARIA JOSE,,2026-05-19,1,D,,false,true
+MARIA JOSE,,2026-05-19,2,D,,false,true
+MARIA JOSE,,2026-05-20,1,12:00,,false,false
+MARIA JOSE,,2026-05-21,1,12:00,,false,false
+MARIA JOSE,,2026-05-22,1,12:00,,false,false
+MARIA JOSE,,2026-05-23,1,08:00,,false,false
+MARIA JOSE,,2026-05-24,1,12:00,00:00,true,false
+MARIA JOSE,,2026-05-25,1,04:00,,false,false
+MARIA JOSE,,2026-05-25,2,18:00,,false,false
+MARIA JOSE,,2026-05-26,1,08:00,,false,false
+ALEX MARTIN,,2026-05-16,1,08:30,,false,false
+ALEX MARTIN,,2026-05-16,2,20:30,,false,false
+ALEX MARTIN,,2026-05-17,1,12:00,,false,false
+ALEX MARTIN,,2026-05-18,1,12:00,,false,false
+ALEX MARTIN,,2026-05-18,2,20:30,,false,false
+ALEX MARTIN,,2026-05-19,1,12:00,,false,false
+ALEX MARTIN,,2026-05-19,2,12:00,,false,false
+ALEX MARTIN,,2026-05-20,1,D,,false,true
+ALEX MARTIN,,2026-05-20,2,D,,false,true
+ALEX MARTIN,,2026-05-21,1,D,,false,true
+ALEX MARTIN,,2026-05-21,2,D,,false,true
+ALEX MARTIN,,2026-05-22,1,12:00,,false,false
+ALEX MARTIN,,2026-05-23,1,09:00,,false,false
+ALEX MARTIN,,2026-05-24,1,12:00,04:00,true,false
+ALEX MARTIN,,2026-05-25,1,08:00,,false,false
+ALEX MARTIN,,2026-05-25,2,21:00,,false,false
+ALEX MARTIN,,2026-05-26,1,12:00,,false,false
+MARIA OLIVA,,2026-05-16,1,09:00,,false,false
+MARIA OLIVA,,2026-05-17,1,09:00,,false,false
+MARIA OLIVA,,2026-05-18,1,09:00,,false,false
+MARIA OLIVA,,2026-05-19,1,D,,false,true
+MARIA OLIVA,,2026-05-19,2,D,,false,true
+MARIA OLIVA,,2026-05-20,1,D,,false,true
+MARIA OLIVA,,2026-05-20,2,D,,false,true
+MARIA OLIVA,,2026-05-21,1,09:00,,false,false
+MARIA OLIVA,,2026-05-22,1,09:00,,false,false
+MARIA OLIVA,,2026-05-23,1,09:00,,false,false
+MARIA OLIVA,,2026-05-24,1,09:00,17:00,false,false
+MARIA OLIVA,,2026-05-25,1,14:00,,false,false
+MARIA OLIVA,,2026-05-26,1,09:00,,false,false
+JUANFRAN,,2026-05-16,1,12:00,,false,false
+JUANFRAN,,2026-05-17,1,08:30,,false,false
+JUANFRAN,,2026-05-17,2,20:30,,false,false
+JUANFRAN,,2026-05-18,1,D,,false,true
+JUANFRAN,,2026-05-18,2,D,,false,true
+JUANFRAN,,2026-05-19,1,08:30,,false,false
+JUANFRAN,,2026-05-19,2,20:30,,false,false
+JUANFRAN,,2026-05-20,1,12:00,,false,false
+JUANFRAN,,2026-05-21,1,12:00,,false,false
+JUANFRAN,,2026-05-22,1,12:00,,false,false
+JUANFRAN,,2026-05-23,1,09:00,,false,false
+JUANFRAN,,2026-05-24,1,12:00,04:00,true,false
+JUANFRAN,,2026-05-25,1,08:00,,false,false
+JUANFRAN,,2026-05-25,2,21:00,,false,false
+JUANFRAN,,2026-05-26,1,12:00,,false,false
+MARIA CHURRERA,,2026-05-16,1,D,,false,true
+MARIA CHURRERA,,2026-05-16,2,D,,false,true
+MARIA CHURRERA,,2026-05-17,1,D,,false,true
+MARIA CHURRERA,,2026-05-17,2,D,,false,true
+MARIA CHURRERA,,2026-05-18,1,12:00,,false,false
+MARIA CHURRERA,,2026-05-18,2,20:30,,false,false
+MARIA CHURRERA,,2026-05-19,1,08:30,,false,false
+MARIA CHURRERA,,2026-05-19,2,20:30,,false,false
+MARIA CHURRERA,,2026-05-20,1,12:00,,false,false
+MARIA CHURRERA,,2026-05-21,1,12:00,,false,false
+MARIA CHURRERA,,2026-05-22,1,08:00,,false,false
+MARIA CHURRERA,,2026-05-23,1,12:00,,false,false
+MARIA CHURRERA,,2026-05-24,1,08:00,20:00,false,false
+MARIA CHURRERA,,2026-05-25,1,00:00,,false,false
+MARIA CHURRERA,,2026-05-26,1,D,,false,true
+MARIA CHURRERA,,2026-05-26,2,D,,false,true
+LAMIAH,,2026-05-16,1,08:30,,false,false
+LAMIAH,,2026-05-17,1,00:00,,false,false
+LAMIAH,,2026-05-18,1,D,,false,true
+LAMIAH,,2026-05-18,2,D,,false,true
+LAMIAH,,2026-05-19,1,D,,false,true
+LAMIAH,,2026-05-19,2,D,,false,true
+LAMIAH,,2026-05-20,1,D,,false,true
+LAMIAH,,2026-05-20,2,D,,false,true
+LAMIAH,,2026-05-21,1,D,,false,true
+LAMIAH,,2026-05-21,2,D,,false,true
+LAMIAH,,2026-05-22,1,08:00,,false,false
+LAMIAH,,2026-05-22,2,19:00,,false,false
+LAMIAH,,2026-05-23,1,12:00,,false,false
+LAMIAH,,2026-05-24,1,08:00,20:00,false,false
+LAMIAH,,2026-05-25,1,00:00,,false,false
+LAMIAH,,2026-05-26,1,D,,false,true
+LAMIAH,,2026-05-26,2,D,,false,true
+JESSY,,2026-05-16,1,D,,false,true
+JESSY,,2026-05-16,2,D,,false,true
+JESSY,,2026-05-17,1,D,,false,true
+JESSY,,2026-05-17,2,D,,false,true
+JESSY,,2026-05-18,1,12:00,,false,false
+JESSY,,2026-05-18,2,20:30,,false,false
+JESSY,,2026-05-19,1,12:00,,false,false
+JESSY,,2026-05-20,1,12:00,,false,false
+JESSY,,2026-05-21,1,12:00,,false,false
+JESSY,,2026-05-22,1,12:00,,false,false
+JESSY,,2026-05-23,1,08:00,,false,false
+JESSY,,2026-05-24,1,12:00,04:00,true,false
+JESSY,,2026-05-25,1,08:00,,false,false
+JESSY,,2026-05-26,1,D,,false,true
+JESSY,,2026-05-26,2,D,,false,true
+JENNY,,2026-05-16,1,12:00,,false,false
+JENNY,,2026-05-17,1,12:00,,false,false
+JENNY,,2026-05-18,1,08:30,,false,false
+JENNY,,2026-05-19,1,12:00,,false,false
+JENNY,,2026-05-20,1,12:00,,false,false
+JENNY,,2026-05-20,2,20:30,,false,false
+JENNY,,2026-05-21,1,12:00,,false,false
+JENNY,,2026-05-22,1,17:00,,false,false
+JENNY,,2026-05-23,1,12:00,,false,false
+JENNY,,2026-05-24,1,12:00,04:00,true,false
+JENNY,,2026-05-25,1,12:00,,false,false
+JENNY,,2026-05-26,1,D,,false,true
+JENNY,,2026-05-26,2,D,,false,true
+ANDREA,,2026-05-16,1,12:00,,false,false
+ANDREA,,2026-05-17,1,08:30,,false,false
+ANDREA,,2026-05-18,1,D,,false,true
+ANDREA,,2026-05-18,2,D,,false,true
+ANDREA,,2026-05-19,1,D,,false,true
+ANDREA,,2026-05-19,2,D,,false,true
+ANDREA,,2026-05-20,1,D,,false,true
+ANDREA,,2026-05-20,2,D,,false,true
+ANDREA,,2026-05-21,1,D,,false,true
+ANDREA,,2026-05-21,2,D,,false,true
+ANDREA,,2026-05-22,1,08:00,,false,false
+ANDREA,,2026-05-22,2,19:00,,false,false
+ANDREA,,2026-05-23,1,08:00,,false,false
+ANDREA,,2026-05-24,1,08:00,20:00,false,false
+ANDREA,,2026-05-25,1,00:00,,false,false
+ANDREA,,2026-05-26,1,D,,false,true
+ANDREA,,2026-05-26,2,D,,false,true
+SERGIO,,2026-05-16,1,12:00,,false,false
+SERGIO,,2026-05-17,1,12:00,,false,false
+SERGIO,,2026-05-18,1,D,,false,true
+SERGIO,,2026-05-18,2,D,,false,true
+SERGIO,,2026-05-19,1,D,,false,true
+SERGIO,,2026-05-19,2,D,,false,true
+SERGIO,,2026-05-20,1,D,,false,true
+SERGIO,,2026-05-20,2,D,,false,true
+SERGIO,,2026-05-21,1,D,,false,true
+SERGIO,,2026-05-21,2,D,,false,true
+SERGIO,,2026-05-22,1,12:00,,false,false
+SERGIO,,2026-05-23,1,12:00,,false,false
+SERGIO,,2026-05-24,1,17:00,04:00,true,false
+SERGIO,,2026-05-25,1,D,,false,true
+SERGIO,,2026-05-25,2,D,,false,true
+SERGIO,,2026-05-26,1,D,,false,true
+SERGIO,,2026-05-26,2,D,,false,true
+CANDELA,,2026-05-16,1,08:30,,false,false
+CANDELA,,2026-05-17,1,08:30,,false,false
+CANDELA,,2026-05-17,2,20:30,,false,false
+CANDELA,,2026-05-18,1,17:00,,false,false
+CANDELA,,2026-05-19,1,08:30,,false,false
+CANDELA,,2026-05-19,2,20:30,,false,false
+CANDELA,,2026-05-20,1,09:00,,false,false
+CANDELA,,2026-05-21,1,08:30,,false,false
+CANDELA,,2026-05-22,1,12:00,,false,false
+CANDELA,,2026-05-23,1,12:00,,false,false
+CANDELA,,2026-05-24,1,12:00,00:00,true,false
+CANDELA,,2026-05-25,1,04:00,,false,false
+CANDELA,,2026-05-25,2,18:00,,false,false
+CANDELA,,2026-05-26,1,08:00,,false,false
+ALEX LAS CABEZAS,,2026-05-16,1,D,,false,true
+ALEX LAS CABEZAS,,2026-05-16,2,D,,false,true
+ALEX LAS CABEZAS,,2026-05-17,1,D,,false,true
+ALEX LAS CABEZAS,,2026-05-17,2,D,,false,true
+ALEX LAS CABEZAS,,2026-05-18,1,08:30,,false,false
+ALEX LAS CABEZAS,,2026-05-19,1,08:30,,false,false
+ALEX LAS CABEZAS,,2026-05-19,2,20:30,,false,false
+ALEX LAS CABEZAS,,2026-05-20,1,08:30,,false,false
+ALEX LAS CABEZAS,,2026-05-20,2,20:30,,false,false
+ALEX LAS CABEZAS,,2026-05-21,1,08:30,,false,false
+ALEX LAS CABEZAS,,2026-05-22,1,08:00,,false,false
+ALEX LAS CABEZAS,,2026-05-23,1,08:00,,false,false
+ALEX LAS CABEZAS,,2026-05-24,1,08:00,20:00,false,false
+ALEX LAS CABEZAS,,2026-05-25,1,00:00,,false,false
+ALEX LAS CABEZAS,,2026-05-26,1,D,,false,true
+ALEX LAS CABEZAS,,2026-05-26,2,D,,false,true
+TORE,,2026-05-16,1,D,,false,true
+TORE,,2026-05-16,2,D,,false,true
+TORE,,2026-05-17,1,D,,false,true
+TORE,,2026-05-17,2,D,,false,true
+TORE,,2026-05-18,1,12:00,,false,false
+TORE,,2026-05-19,1,12:00,,false,false
+TORE,,2026-05-19,2,20:30,,false,false
+TORE,,2026-05-20,1,09:00,,false,false
+TORE,,2026-05-21,1,12:00,,false,false
+TORE,,2026-05-22,1,08:00,,false,false
+TORE,,2026-05-23,1,12:00,,false,false
+TORE,,2026-05-24,1,12:00,00:00,true,false
+TORE,,2026-05-25,1,04:00,,false,false
+TORE,,2026-05-26,1,D,,false,true
+TORE,,2026-05-26,2,D,,false,true
+ALBA,,2026-05-16,1,08:30,,false,false
+ALBA,,2026-05-16,2,20:30,,false,false
+ALBA,,2026-05-17,1,08:30,,false,false
+ALBA,,2026-05-18,1,17:00,,false,false
+ALBA,,2026-05-19,1,12:00,,false,false
+ALBA,,2026-05-20,1,08:30,,false,false
+ALBA,,2026-05-20,2,20:30,,false,false
+ALBA,,2026-05-21,1,12:00,,false,false
+ALBA,,2026-05-22,1,12:00,,false,false
+ALBA,,2026-05-23,1,08:00,,false,false
+ALBA,,2026-05-24,1,12:00,00:00,true,false
+ALBA,,2026-05-25,1,04:00,,false,false
+ALBA,,2026-05-25,2,18:00,,false,false
+ALBA,,2026-05-26,1,08:00,,false,false
+BIANCA,,2026-05-16,1,D,,false,true
+BIANCA,,2026-05-16,2,D,,false,true
+BIANCA,,2026-05-17,1,D,,false,true
+BIANCA,,2026-05-17,2,D,,false,true
+BIANCA,,2026-05-18,1,08:30,,false,false
+BIANCA,,2026-05-19,1,12:00,,false,false
+BIANCA,,2026-05-19,2,20:30,,false,false
+BIANCA,,2026-05-20,1,08:30,,false,false
+BIANCA,,2026-05-20,2,20:30,,false,false
+BIANCA,,2026-05-21,1,08:30,,false,false
+BIANCA,,2026-05-22,1,08:00,,false,false
+BIANCA,,2026-05-22,2,21:00,,false,false
+BIANCA,,2026-05-23,1,09:00,,false,false
+BIANCA,,2026-05-24,1,08:00,20:00,false,false
+BIANCA,,2026-05-25,1,00:00,,false,false
+BIANCA,,2026-05-26,1,08:00,,false,false
+CARLA,,2026-05-16,1,D,,false,true
+CARLA,,2026-05-16,2,D,,false,true
+CARLA,,2026-05-17,1,D,,false,true
+CARLA,,2026-05-17,2,D,,false,true
+CARLA,,2026-05-18,1,D,,false,true
+CARLA,,2026-05-18,2,D,,false,true
+CARLA,,2026-05-19,1,D,,false,true
+CARLA,,2026-05-19,2,D,,false,true
+CARLA,,2026-05-20,1,D,,false,true
+CARLA,,2026-05-20,2,D,,false,true
+CARLA,,2026-05-21,1,D,,false,true
+CARLA,,2026-05-21,2,D,,false,true
+CARLA,,2026-05-22,1,17:00,,false,false
+CARLA,,2026-05-23,1,17:00,,false,false
+CARLA,,2026-05-24,1,17:00,00:00,true,false
+CARLA,,2026-05-25,1,D,,false,true
+CARLA,,2026-05-25,2,D,,false,true
+CARLA,,2026-05-26,1,D,,false,true
+CARLA,,2026-05-26,2,D,,false,true
+PASTORI,,2026-05-16,1,D,,false,true
+PASTORI,,2026-05-16,2,D,,false,true
+PASTORI,,2026-05-17,1,D,,false,true
+PASTORI,,2026-05-17,2,D,,false,true
+PASTORI,,2026-05-18,1,D,,false,true
+PASTORI,,2026-05-18,2,D,,false,true
+PASTORI,,2026-05-19,1,D,,false,true
+PASTORI,,2026-05-19,2,D,,false,true
+PASTORI,,2026-05-20,1,D,,false,true
+PASTORI,,2026-05-20,2,D,,false,true
+PASTORI,,2026-05-21,1,D,,false,true
+PASTORI,,2026-05-21,2,D,,false,true
+PASTORI,,2026-05-22,1,12:00,,false,false
+PASTORI,,2026-05-23,1,12:00,,false,false
+PASTORI,,2026-05-24,1,12:00,00:00,true,false
+PASTORI,,2026-05-25,1,04:00,,false,false
+PASTORI,,2026-05-26,1,D,,false,true
+PASTORI,,2026-05-26,2,D,,false,true
+??????,,2026-05-16,1,D,,false,true
+??????,,2026-05-16,2,D,,false,true
+??????,,2026-05-17,1,D,,false,true
+??????,,2026-05-17,2,D,,false,true
+??????,,2026-05-18,1,08:30,,false,false
+??????,,2026-05-19,1,08:30,,false,false
+??????,,2026-05-19,2,20:30,,false,false
+??????,,2026-05-20,1,12:00,,false,false
+??????,,2026-05-20,2,20:30,,false,false
+??????,,2026-05-21,1,08:30,,false,false
+??????,,2026-05-22,1,17:00,,false,false
+??????,,2026-05-23,1,12:00,,false,false
+??????,,2026-05-24,1,12:00,00:00,true,false
+??????,,2026-05-25,1,04:00,,false,false
+??????,,2026-05-26,1,D,,false,true
+??????,,2026-05-26,2,D,,false,true
+SAMARA,,2026-05-16,1,D,,false,true
+SAMARA,,2026-05-16,2,D,,false,true
+SAMARA,,2026-05-17,1,D,,false,true
+SAMARA,,2026-05-17,2,D,,false,true
+SAMARA,,2026-05-18,1,D,,false,true
+SAMARA,,2026-05-18,2,D,,false,true
+SAMARA,,2026-05-19,1,D,,false,true
+SAMARA,,2026-05-19,2,D,,false,true
+SAMARA,,2026-05-20,1,D,,false,true
+SAMARA,,2026-05-20,2,D,,false,true
+SAMARA,,2026-05-21,1,D,,false,true
+SAMARA,,2026-05-21,2,D,,false,true
+SAMARA,,2026-05-22,1,D,,false,true
+SAMARA,,2026-05-22,2,D,,false,true
+SAMARA,,2026-05-23,1,17:00,,false,false
+SAMARA,,2026-05-24,1,12:00,00:00,true,false
+SAMARA,,2026-05-25,1,04:00,,false,false
+SAMARA,,2026-05-26,1,D,,false,true
+SAMARA,,2026-05-26,2,D,,false,true
+ELI,,2026-05-16,1,D,,false,true
+ELI,,2026-05-16,2,D,,false,true
+ELI,,2026-05-17,1,D,,false,true
+ELI,,2026-05-17,2,D,,false,true
+ELI,,2026-05-18,1,D,,false,true
+ELI,,2026-05-18,2,D,,false,true
+ELI,,2026-05-19,1,D,,false,true
+ELI,,2026-05-19,2,D,,false,true
+ELI,,2026-05-20,1,D,,false,true
+ELI,,2026-05-20,2,D,,false,true
+ELI,,2026-05-21,1,D,,false,true
+ELI,,2026-05-21,2,D,,false,true
+ELI,,2026-05-22,1,12:00,,false,false
+ELI,,2026-05-23,1,12:00,,false,false
+ELI,,2026-05-24,1,12:00,04:00,true,false
+ELI,,2026-05-25,1,D,,false,true
+ELI,,2026-05-25,2,D,,false,true
+ELI,,2026-05-26,1,D,,false,true
+ELI,,2026-05-26,2,D,,false,true
+ELI MORENA,,2026-05-16,1,D,,false,true
+ELI MORENA,,2026-05-16,2,D,,false,true
+ELI MORENA,,2026-05-17,1,D,,false,true
+ELI MORENA,,2026-05-17,2,D,,false,true
+ELI MORENA,,2026-05-18,1,17:00,,false,false
+ELI MORENA,,2026-05-19,1,12:00,,false,false
+ELI MORENA,,2026-05-19,2,20:30,,false,false
+ELI MORENA,,2026-05-20,1,12:00,,false,false
+ELI MORENA,,2026-05-21,1,12:00,,false,false
+ELI MORENA,,2026-05-21,2,20:30,,false,false
+ELI MORENA,,2026-05-22,1,D,,false,true
+ELI MORENA,,2026-05-22,2,D,,false,true
+ELI MORENA,,2026-05-23,1,D,,false,true
+ELI MORENA,,2026-05-23,2,D,,false,true
+ELI MORENA,,2026-05-24,1,D,,false,true
+ELI MORENA,,2026-05-24,2,D,,false,true
+ELI MORENA,,2026-05-25,1,D,,false,true
+ELI MORENA,,2026-05-25,2,D,,false,true
+ELI MORENA,,2026-05-26,1,D,,false,true
+ELI MORENA,,2026-05-26,2,D,,false,true
+MARIOLA,,2026-05-16,1,D,,false,true
+MARIOLA,,2026-05-16,2,D,,false,true
+MARIOLA,,2026-05-17,1,D,,false,true
+MARIOLA,,2026-05-17,2,D,,false,true
+MARIOLA,,2026-05-18,1,D,,false,true
+MARIOLA,,2026-05-18,2,D,,false,true
+MARIOLA,,2026-05-19,1,D,,false,true
+MARIOLA,,2026-05-19,2,D,,false,true
+MARIOLA,,2026-05-20,1,D,,false,true
+MARIOLA,,2026-05-20,2,D,,false,true
+MARIOLA,,2026-05-21,1,D,,false,true
+MARIOLA,,2026-05-21,2,D,,false,true
+MARIOLA,,2026-05-22,1,D,,false,true
+MARIOLA,,2026-05-22,2,D,,false,true
+MARIOLA,,2026-05-23,1,12:00,,false,false
+MARIOLA,,2026-05-24,1,08:00,,false,false
+MARIOLA,,2026-05-25,1,D,,false,true
+MARIOLA,,2026-05-25,2,D,,false,true
+MARIOLA,,2026-05-26,1,D,,false,true
+MARIOLA,,2026-05-26,2,D,,false,true
+MIGUE,mgomezlavado@yahoo.es,2026-05-16,1,08:30,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-17,1,08:30,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-17,2,20:30,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-18,1,17:00,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-19,1,08:30,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-19,2,20:30,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-20,1,09:00,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-21,1,08:30,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-22,1,12:00,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-23,1,12:00,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-24,1,12:00,00:00,true,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-25,1,04:00,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-25,2,18:00,,false,false
+MIGUE,mgomezlavado@yahoo.es,2026-05-26,1,08:00,,false,false

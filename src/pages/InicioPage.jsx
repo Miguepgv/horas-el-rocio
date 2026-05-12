@@ -1,0 +1,816 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import BrandLogo from '../components/BrandLogo.jsx'
+import ManageAdminsModal from '../components/ManageAdminsModal.jsx'
+import { supabase } from '../lib/supabase'
+import { resolveAdminAccess } from '../lib/admin.js'
+import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
+import {
+  buildDailySummary,
+  eachEventDateISO,
+  fixedWorkerExtras,
+  formatDateLocalISO,
+  formatHoursMinutes,
+  parseLocalDate,
+  paidEurosOverlappingDay,
+  paidShiftsOverlappingDay,
+  weekdayMonSunFromDate,
+  weekdayShort,
+  workedHoursForDay,
+  workedNoPayHoursOverlappingDay,
+  workedPaidHoursOverlappingDay,
+} from '../lib/payCompute.js'
+import {
+  friendlySupabaseError,
+  isMissingTableError,
+} from '../lib/dbErrors.js'
+import { planillaRowToSlots } from '../lib/rocioPlanillaSchedule.js'
+import { escapeForILikeExact } from '../lib/emailMatch.js'
+import { sessionIsInsecure } from '../lib/insecureLogin.js'
+
+function fmtClock(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function fmtDateEs(isoYmd) {
+  const d = parseLocalDate(isoYmd)
+  return d.toLocaleDateString('es-ES', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
+export default function InicioPage({ session, onSignOut }) {
+  const uid = session?.user?.id
+  const email = session?.user?.email ?? ''
+
+  const [gate, setGate] = useState({
+    isAdmin: false,
+    isSuper: false,
+    loaded: false,
+  })
+  const [gearOpen, setGearOpen] = useState(false)
+
+  const [profile, setProfile] = useState(null)
+  const [punches, setPunches] = useState([])
+  const [scheduleSlots, setScheduleSlots] = useState([])
+  const [eventWorker, setEventWorker] = useState(null)
+  const [tab, setTab] = useState('horario')
+  const [punchMsg, setPunchMsg] = useState(null)
+  const [loadingData, setLoadingData] = useState(true)
+  const [horarioBanner, setHorarioBanner] = useState(null)
+  const [planillaExtrasRow, setPlanillaExtrasRow] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      const r = await resolveAdminAccess(supabase, session)
+      if (!cancelled) setGate({ ...r, loaded: true })
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [session])
+
+  useEffect(() => {
+    let cancelled = false
+    async function avisos() {
+      const ack = localStorage.getItem('horario_avisos_ack_ts') ?? ''
+      const em = email.trim().toLowerCase()
+      if (!em) return
+      const { data, error } = await supabase
+        .from('horario_avisos')
+        .select('id,mensaje,para_email,created_at')
+        .or(`para_email.is.null,para_email.eq.${em}`)
+        .order('created_at', { ascending: false })
+        .limit(8)
+      if (cancelled) return
+      if (error) {
+        if (!isMissingTableError(error)) {
+          /* opcional: log */
+        }
+        return
+      }
+      const unseen = (data ?? []).filter(
+        (r) => !ack || String(r.created_at) > ack,
+      )
+      if (unseen.length) {
+        const last = unseen[0]
+        setHorarioBanner({
+          id: last.id,
+          text: last.mensaje,
+          createdAt: last.created_at,
+        })
+      } else setHorarioBanner(null)
+    }
+    avisos()
+    return () => {
+      cancelled = true
+    }
+  }, [email])
+
+  async function reloadData() {
+    if (!uid) return
+    setLoadingData(true)
+    setPunchMsg(null)
+    const emailLower = email.trim().toLowerCase()
+    const emailPattern = escapeForILikeExact(emailLower)
+
+    const pu = await supabase
+      .from('punches')
+      .select('*')
+      .eq('user_id', uid)
+      .order('punched_at', { ascending: true })
+
+    const pr = await supabase
+      .from('worker_profiles')
+      .select('*')
+      .eq('user_id', uid)
+      .maybeSingle()
+
+    const [ewUid, ewMail] = await Promise.all([
+      supabase
+        .from('event_workers')
+        .select('id,full_name,email,auth_user_id')
+        .eq('auth_user_id', uid)
+        .limit(1),
+      supabase
+        .from('event_workers')
+        .select('id,full_name,email,auth_user_id')
+        .ilike('email', emailPattern)
+        .limit(1),
+    ])
+
+    const ewRow = ewUid.data?.[0] ?? ewMail.data?.[0]
+    let ewErr = null
+    if (!ewRow) {
+      if (ewUid.error && !isMissingTableError(ewUid.error)) ewErr = ewUid.error
+      else if (ewMail.error && !isMissingTableError(ewMail.error)) ewErr = ewMail.error
+    }
+    const ewRes = {
+      data: ewRow ? [ewRow] : [],
+      error: ewErr,
+    }
+
+    let slots = []
+    let planillaRow = null
+
+    const plEmail = await supabase
+      .from('rocio_horario_planilla')
+      .select('*')
+      .ilike('correo', emailPattern)
+      .limit(1)
+      .maybeSingle()
+
+    if (plEmail.error && !isMissingTableError(plEmail.error)) {
+      /* handled below */
+    } else if (plEmail.data) {
+      planillaRow = plEmail.data
+    }
+
+    let plNameError = null
+    if (!planillaRow && ewRow?.full_name && !ewRes.error) {
+      const plName = await supabase
+        .from('rocio_horario_planilla')
+        .select('*')
+        .eq('nombre', ewRow.full_name.trim())
+        .maybeSingle()
+      plNameError = plName.error
+      if (!plName.error && plName.data) {
+        planillaRow = plName.data
+      }
+    }
+
+    if (planillaRow) {
+      slots = planillaRowToSlots(planillaRow, ewRow?.id ?? null)
+    } else if (ewRow?.id && !ewRes.error) {
+      const sl = await supabase
+        .from('event_schedule_slots')
+        .select('*')
+        .eq('worker_id', ewRow.id)
+      if (!sl.error) slots = sl.data ?? []
+    }
+
+    const errs = []
+    if (pu.error) errs.push(pu.error)
+    if (pr.error && !isMissingTableError(pr.error)) errs.push(pr.error)
+    if (ewRes.error && !isMissingTableError(ewRes.error))
+      errs.push(ewRes.error)
+    if (plEmail.error && !isMissingTableError(plEmail.error))
+      errs.push(plEmail.error)
+    if (plNameError && !isMissingTableError(plNameError))
+      errs.push(plNameError)
+
+    if (errs.length) {
+      setPunchMsg({
+        type: 'error',
+        text: friendlySupabaseError(errs[0]),
+      })
+    }
+
+    let prof = pr.data
+    const insecure = sessionIsInsecure(session)
+    if (
+      !insecure &&
+      !pr.error &&
+      !prof &&
+      !isMissingTableError(pr.error)
+    ) {
+      const ins = await supabase.from('worker_profiles').insert({ user_id: uid })
+      if (!ins.error) {
+        const again = await supabase
+          .from('worker_profiles')
+          .select('*')
+          .eq('user_id', uid)
+          .maybeSingle()
+        prof = again.data
+      }
+    } else if (isMissingTableError(pr.error)) {
+      prof = null
+    }
+
+    const effWorker =
+      ewRow ??
+      (planillaRow
+        ? {
+            id: null,
+            full_name: String(planillaRow.nombre ?? '').trim(),
+            email:
+              String(planillaRow.correo ?? '')
+                .trim()
+                .toLowerCase() || emailLower,
+            auth_user_id: uid,
+          }
+        : null)
+
+    setProfile(prof ?? null)
+    setPunches(pu.data ?? [])
+    setEventWorker(effWorker)
+    setScheduleSlots(slots)
+    setPlanillaExtrasRow(planillaRow ?? null)
+    setLoadingData(false)
+  }
+
+  useEffect(() => {
+    reloadData()
+  }, [uid])
+
+  const todayIso = formatDateLocalISO(new Date())
+  const slotsToday = useMemo(
+    () =>
+      scheduleSlots
+        .filter((s) => s.work_date === todayIso)
+        .sort((a, b) => a.slot_index - b.slot_index),
+    [scheduleSlots, todayIso],
+  )
+
+  function slotsForDate(iso) {
+    return scheduleSlots
+      .filter((s) => s.work_date === iso)
+      .sort((a, b) => a.slot_index - b.slot_index)
+  }
+
+  const lastPunch = useMemo(() => {
+    if (!punches.length) return null
+    const sorted = punches.slice().sort(
+      (a, b) => new Date(b.punched_at) - new Date(a.punched_at),
+    )
+    return sorted[0]
+  }, [punches])
+
+  const punchChains = useMemo(() => {
+    const sortF = (a, b) =>
+      new Date(a.punched_at).getTime() - new Date(b.punched_at).getTime()
+    const paid = punches.filter((p) => !p.no_pay).sort(sortF)
+    function openIn(list) {
+      let o = false
+      for (const p of list) {
+        if (p.punch_type === 'in') o = true
+        else if (p.punch_type === 'out') o = false
+      }
+      return o
+    }
+    return { openPaidIn: openIn(paid) }
+  }, [punches])
+
+  const profileForPay = useMemo(() => {
+    const pl = planillaExtrasRow
+    const base = profile ? { ...profile } : {}
+    function mergeEuro(plVal, profKey) {
+      if (plVal != null && String(plVal).trim() !== '') {
+        const n = Number(String(plVal).replace(/\s/g, '').replace(',', '.'))
+        if (Number.isFinite(n)) return n
+      }
+      return Number(base[profKey] ?? 0) || 0
+    }
+    const payroll = mergeEuro(pl?.nomina_event_euros, 'payroll_event_euros')
+    const gasoil = mergeEuro(pl?.gasoil_euros, 'gasoil_euros')
+    const parking = mergeEuro(pl?.parking_euros, 'parking_euros')
+    return {
+      ...base,
+      payroll_event_euros: payroll,
+      gasoil_euros: gasoil,
+      parking_euros: parking,
+      is_fixed: Boolean(base.is_fixed) || payroll > 0,
+    }
+  }, [profile, planillaExtrasRow])
+
+  const summary = useMemo(() => buildDailySummary(punches), [punches])
+  const extras = useMemo(
+    () => fixedWorkerExtras(profileForPay, summary.totalGross),
+    [profileForPay, summary.totalGross],
+  )
+  const showMoneyExtras = useMemo(
+    () =>
+      extras.payrollIncluded > 0 ||
+      extras.parking > 0 ||
+      extras.gasoil > 0 ||
+      extras.isFixed,
+    [extras],
+  )
+
+  async function punch(kind, { noPay = false } = {}) {
+    if (!uid) return
+    setPunchMsg(null)
+    const row = {
+      user_id: uid,
+      punch_type: kind,
+      punched_at: new Date().toISOString(),
+      created_by: null,
+      no_pay: noPay,
+    }
+    const { error } = await supabase.from('punches').insert(row)
+    if (error) {
+      setPunchMsg({ type: 'error', text: friendlySupabaseError(error) })
+      return
+    }
+    await reloadData()
+  }
+
+  /** Solo días del evento (15–26 may 2026). */
+  const scheduleTableDays = useMemo(
+    () => [...eachEventDateISO()].sort(),
+    [],
+  )
+
+  function dismissHorarioAviso() {
+    if (horarioBanner?.createdAt) {
+      localStorage.setItem(
+        'horario_avisos_ack_ts',
+        String(horarioBanner.createdAt),
+      )
+    }
+    setHorarioBanner(null)
+  }
+
+  const todayPunches = useMemo(() => {
+    return punches
+      .filter((p) => formatDateLocalISO(new Date(p.punched_at)) === todayIso)
+      .slice()
+      .sort((a, b) => new Date(a.punched_at) - new Date(b.punched_at))
+  }, [punches, todayIso])
+
+  return (
+    <div className="shell wide">
+      <header className="header row header-brand">
+        <div className="header-brand-left">
+          <BrandLogo className="brand-logo-sm" />
+          <div>
+            <h1>Horas — El Rocío</h1>
+            <p className="muted">{PAY_EVENT_EL_ROCIO.label}</p>
+          </div>
+        </div>
+        <div className="header-actions">
+          {gate.loaded && gate.isSuper && (
+            <button
+              type="button"
+              className="icon-gear"
+              title="Gestionar administradores"
+              aria-label="Gestionar administradores"
+              onClick={() => setGearOpen(true)}
+            >
+              ⚙
+            </button>
+          )}
+          {gate.loaded && gate.isAdmin && (
+            <Link to="/admin" className="link-btn subtle">
+              Administración
+            </Link>
+          )}
+          <button type="button" className="secondary btn-inline" onClick={onSignOut}>
+            Cerrar sesión
+          </button>
+        </div>
+      </header>
+
+      <ManageAdminsModal open={gearOpen} onClose={() => setGearOpen(false)} />
+
+      <p className="muted small session-email">
+        Sesión: <strong>{email}</strong>
+        {eventWorker?.full_name ? (
+          <>
+            {' '}
+            · <strong>{eventWorker.full_name}</strong>
+          </>
+        ) : null}
+      </p>
+
+      {horarioBanner ? (
+        <div className="banner horario-aviso-banner" role="status">
+          <p>
+            <strong>Aviso:</strong> {horarioBanner.text}
+          </p>
+          <button type="button" className="secondary btn-xs" onClick={dismissHorarioAviso}>
+            Entendido
+          </button>
+        </div>
+      ) : null}
+
+      {!loadingData && !eventWorker && (
+        <p className="banner roster-hint">
+          No hay fila que coincida con <strong>{email}</strong>. Si acabas de entrar por
+          WhatsApp, tu correo queda registrado: el encargado puede elegirlo en{' '}
+          <strong>Administración → Planilla horario</strong> (desplegable de correo junto a tu
+          nombre) o ponerlo en la <strong>plantilla del evento</strong>. Al guardar, la próxima
+          vez que entres ya verás horario y fichaje.
+        </p>
+      )}
+
+      <section className="card punch-card">
+        <p className="label-up">Hoy ({fmtDateEs(todayIso)})</p>
+        <div className="today-sched">
+          <div>
+            <span className="muted small">Horario previsto</span>
+            <p className="today-sched-line schedule-split">
+              {slotsToday.length > 0 ? (
+                slotsToday.map((sl) => (
+                  <span
+                    key={sl.id ?? `${sl.work_date}-${sl.slot_index}`}
+                    className="planned-slot-block"
+                  >
+                    <span className="muted small">Turno {sl.slot_index}</span>{' '}
+                    {sl.is_rest ? (
+                      <span className="muted">Descanso</span>
+                    ) : (
+                      <>
+                        <span className="badge-sched-in badge-h-prev-in">Entrada</span>{' '}
+                        <span className="time-strong time-h-prev-in">
+                          {sl.start_time
+                            ? String(sl.start_time).slice(0, 5)
+                            : '—'}
+                        </span>
+                        <span className="schedule-arrow">→</span>
+                        <span className="badge-sched-out badge-h-prev-out">Salida</span>{' '}
+                        <span className="time-strong time-h-prev-out">
+                          {sl.end_time ? String(sl.end_time).slice(0, 5) : '—'}
+                        </span>
+                        {sl.crosses_midnight ? (
+                          <span className="muted small"> (+1 día)</span>
+                        ) : null}
+                      </>
+                    )}
+                  </span>
+                ))
+              ) : (
+                'Sin horario cargado (tu encargado puede cargarlo en Administración).'
+              )}
+            </p>
+          </div>
+          <div>
+            <span className="muted small">Último fichaje</span>
+            <p className="today-sched-line">
+              {lastPunch ? (
+                <>
+                  {lastPunch.punch_type === 'in' ? (
+                    <span className="badge-in badge-fich-in">Entrada</span>
+                  ) : (
+                    <span className="badge-out badge-fich-out">Salida</span>
+                  )}{' '}
+                  ·{' '}
+                  <strong>{fmtClock(lastPunch.punched_at)}</strong>
+                  {lastPunch.no_pay ? (
+                    <span className="muted small"> (sin cobro)</span>
+                  ) : null}
+                </>
+              ) : (
+                '—'
+              )}
+            </p>
+          </div>
+        </div>
+
+        {todayPunches.length > 0 && (
+          <ul className="punch-today-list" aria-label="Fichajes de hoy">
+            {todayPunches.map((p) => (
+              <li key={p.id}>
+                {p.punch_type === 'in' ? (
+                  <span className={`badge-in ${p.no_pay ? 'badge-np' : 'badge-fich-in'}`}>
+                    Entrada
+                  </span>
+                ) : (
+                  <span className={`badge-out ${p.no_pay ? 'badge-np' : 'badge-fich-out'}`}>
+                    Salida
+                  </span>
+                )}{' '}
+                <span className="time-strong">{fmtClock(p.punched_at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="punch-actions punch-actions-grid">
+          <button
+            type="button"
+            className="btn-punch btn-in"
+            disabled={loadingData || punchChains.openPaidIn}
+            onClick={() => punch('in', { noPay: false })}
+          >
+            Fichar entrada
+          </button>
+          <button
+            type="button"
+            className="btn-punch btn-out"
+            disabled={loadingData || !punchChains.openPaidIn}
+            onClick={() => punch('out', { noPay: false })}
+          >
+            Fichar salida
+          </button>
+        </div>
+        {punchMsg && (
+          <p className={`hint ${punchMsg.type === 'error' ? 'error' : 'ok'}`}>
+            {punchMsg.text}
+          </p>
+        )}
+      </section>
+
+      <section className="card tabs-card">
+        <div className="tabs-bar" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'horario'}
+            className={tab === 'horario' ? 'tab active' : 'tab'}
+            onClick={() => setTab('horario')}
+          >
+            Mi horario
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'resumen'}
+            className={tab === 'resumen' ? 'tab active' : 'tab'}
+            onClick={() => setTab('resumen')}
+          >
+            Resumen cobro
+          </button>
+        </div>
+
+        {tab === 'horario' && (
+          <div className="tab-panel">
+            <p className="muted small tab-intro">
+              Días del evento ({PAY_EVENT_EL_ROCIO.dateFrom} → {PAY_EVENT_EL_ROCIO.dateTo}). Los
+              días pasados muestran lo fichado; los futuros, lo previsto si consta en planilla.
+            </p>
+            <div className="table-wrap">
+              <table className="rules-table schedule-table">
+                <thead>
+                  <tr>
+                    <th>Día</th>
+                    <th>Previsto</th>
+                    <th>Fichado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scheduleTableDays.map((iso) => {
+                    const d = parseLocalDate(iso)
+                    const wd = weekdayMonSunFromDate(d)
+                    const slotList = slotsForDate(iso)
+                    const planned =
+                      slotList.length > 0 ? (
+                        <div className="planned-stack">
+                          {slotList.map((sl) => (
+                            <div
+                              key={sl.id ?? `${iso}-${sl.slot_index}`}
+                              className="planned-slot-row"
+                            >
+                              <span className="muted small">T{sl.slot_index}</span>{' '}
+                              {sl.is_rest ? (
+                                <span className="muted">Descanso</span>
+                              ) : (
+                                <>
+                                  <span className="badge-sched-in badge-h-prev-in">E</span>{' '}
+                                  <span className="time-h-prev-in">
+                                  {sl.start_time
+                                    ? String(sl.start_time).slice(0, 5)
+                                    : '—'}
+                                  </span>
+                                  <span className="schedule-arrow muted">→</span>{' '}
+                                  <span className="badge-sched-out badge-h-prev-out">S</span>{' '}
+                                  <span className="time-h-prev-out">
+                                  {sl.end_time
+                                    ? String(sl.end_time).slice(0, 5)
+                                    : '—'}
+                                  </span>
+                                  {sl.crosses_midnight ? (
+                                    <span className="muted small"> (+1)</span>
+                                  ) : null}
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        '—'
+                      )
+                    const shifts = paidShiftsOverlappingDay(punches, iso)
+                    const hPaid = workedPaidHoursOverlappingDay(punches, iso)
+                    const hNp = workedNoPayHoursOverlappingDay(punches, iso)
+                    const ePaid = paidEurosOverlappingDay(punches, iso)
+                    const avgRate = hPaid > 0 ? ePaid / hPaid : null
+                    const hoursLegacy = workedHoursForDay(punches, iso)
+                    const startDay = new Date()
+                    startDay.setHours(0, 0, 0, 0)
+                    const past = d < startDay
+
+                    const fichadoCell =
+                      shifts.length > 0 ? (
+                        <div className="fichado-stack">
+                          {shifts.map((seg, i) => (
+                            <div key={i} className="fichado-shift-row">
+                              <span>
+                                <span className="badge-in badge-fich-in">E</span>{' '}
+                                <span className="time-strong">
+                                  {fmtClock(seg.inAt.toISOString())}
+                                </span>
+                              </span>
+                              <span className="fichado-shift-mid muted">→</span>
+                              <span>
+                                <span className="badge-out badge-fich-out">S</span>{' '}
+                                <span className="time-strong">
+                                  {fmtClock(seg.outAt.toISOString())}
+                                </span>
+                              </span>
+                              <span className="fichado-shift-hours">
+                                <strong>{formatHoursMinutes(seg.hoursOnDay)}</strong>
+                              </span>
+                            </div>
+                          ))}
+                          <div className="fichado-day-footer muted small">
+                            Total día (cobro): <strong>{formatHoursMinutes(hPaid)}</strong>
+                            {ePaid > 0 ? (
+                              <>
+                                {' '}
+                                · <strong>{ePaid.toFixed(2)} €</strong>
+                              </>
+                            ) : null}
+                            {hPaid > 0 && avgRate != null ? (
+                              <> (~{avgRate.toFixed(2)} €/h med.)</>
+                            ) : null}
+                          </div>
+                          {hNp > 0 ? (
+                            <p className="fich-line-np muted small fichado-np-note">
+                              Sin cobro: {formatHoursMinutes(hNp)}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : hNp > 0 ? (
+                        <span className="fich-line-np">{formatHoursMinutes(hNp)} sin cobro</span>
+                      ) : hPaid + hNp > 0 ? (
+                        <span>
+                          {hPaid > 0 ? (
+                            <>
+                              <span className="fich-line-paid">
+                                {formatHoursMinutes(hPaid)} cobro
+                                {avgRate != null ? (
+                                  <span className="muted small">
+                                    {' '}
+                                    (~{avgRate.toFixed(2)} €/h)
+                                  </span>
+                                ) : null}
+                              </span>
+                            </>
+                          ) : null}
+                        </span>
+                      ) : null
+                    return (
+                      <tr key={iso}>
+                        <td>
+                          <strong>{weekdayShort(wd)}</strong>{' '}
+                          <span className="muted small">{fmtDateEs(iso)}</span>
+                        </td>
+                        <td>{planned}</td>
+                        <td>
+                          {fichadoCell ? (
+                            fichadoCell
+                          ) : hoursLegacy > 0 ? (
+                            <span className="muted small">
+                              {formatHoursMinutes(hoursLegacy)} (detalle)
+                            </span>
+                          ) : past ? (
+                            <span className="muted">Sin fichajes</span>
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {tab === 'resumen' && (
+          <div className="tab-panel">
+            <div className="table-wrap">
+              <table className="rules-table">
+                <thead>
+                  <tr>
+                    <th>Día</th>
+                    <th>Horas</th>
+                    <th>€ estim.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.rows.map((r) => (
+                    <tr key={r.dateIso}>
+                      <td>
+                        {r.weekdayLabel} {fmtDateEs(r.dateIso)}
+                      </td>
+                      <td>{r.hours > 0 ? formatHoursMinutes(r.hours) : '—'}</td>
+                      <td>{r.gross > 0 ? `${r.gross.toFixed(2)} €` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="card subpanel">
+              <p className="label-up">Totales (tarifas del evento)</p>
+              <p>
+                Horas (cobro):{' '}
+                <strong>{formatHoursMinutes(summary.totalHours)}</strong> · Bruto horas:{' '}
+                <strong>{summary.totalGross.toFixed(2)} €</strong>
+              </p>
+              {showMoneyExtras ? (
+                <>
+                  {extras.isFixed ? (
+                    <p className="muted small">
+                      Trabajador <strong>fijo</strong>: se descuenta la nómina prevista del evento
+                      sobre el bruto por horas.
+                    </p>
+                  ) : extras.payrollIncluded > 0 ? (
+                    <p className="muted small">
+                      Parte del cobro va por <strong>nómina</strong> (lo marca el encargado en la
+                      planilla o en administración): esos € se restan del bruto estimado por horas.
+                    </p>
+                  ) : (
+                    <p className="muted small">
+                      Incluye extras (gasoil, parking) indicados en tu fila de planilla o en
+                      administración.
+                    </p>
+                  )}
+                  <ul className="money-list">
+                    <li>
+                      Por nómina (evento):{' '}
+                      <strong>{extras.payrollIncluded.toFixed(2)} €</strong>
+                    </li>
+                    <li>
+                      Bruto por horas (estim.):{' '}
+                      <strong>{extras.grossFromHours.toFixed(2)} €</strong>
+                    </li>
+                    <li>
+                      Tras descontar nómina (horas en mano):{' '}
+                      <strong>{extras.extraAfterPayroll.toFixed(2)} €</strong>
+                    </li>
+                    <li>
+                      Parking: <strong>{extras.parking.toFixed(2)} €</strong> · Gasoil:{' '}
+                      <strong>{extras.gasoil.toFixed(2)} €</strong>
+                    </li>
+                    <li className="money-total">
+                      Total aprox. en mano (horas + extras):{' '}
+                      <strong>{extras.totalCashExtra.toFixed(2)} €</strong>
+                    </li>
+                  </ul>
+                </>
+              ) : (
+                <p className="muted small">
+                  Si tienes nómina en el evento o extras de parking/gasoil, tu encargado puede
+                  indicarlo en la planilla (columnas Nómina, Gasoil, Parking) o en administración.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}

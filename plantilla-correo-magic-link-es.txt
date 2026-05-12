@@ -1,0 +1,27 @@
+=== Dónde pegarlo en Supabase ===
+Dashboard → Authentication → Email Templates → plantilla "Magic Link" (o "Confirm signup" si es la que usa tu flujo de OTP).
+
+Asunto sugerido:
+Entrar en Horas — El Rocío
+
+Cuerpo (HTML). Las variables {{ ... }} son de Supabase; no las borres.
+
+---
+<h1 style="font-family:system-ui,sans-serif;font-size:20px;color:#1c1917;">Horas — El Rocío</h1>
+<p style="font-family:system-ui,sans-serif;font-size:15px;color:#444;">Hola,</p>
+<p style="font-family:system-ui,sans-serif;font-size:15px;color:#444;">Pulsa el botón para entrar en la aplicación de fichaje. El enlace caduca pasado un tiempo por seguridad.</p>
+<p style="margin:24px 0;">
+  <a href="{{ .ConfirmationURL }}" style="background:#b45309;color:#fffaf5;padding:12px 20px;border-radius:8px;text-decoration:none;font-family:system-ui,sans-serif;font-weight:600;display:inline-block;">Entrar en la app</a>
+</p>
+<p style="font-family:system-ui,sans-serif;font-size:14px;color:#666;">Si no has solicitado este correo, puedes ignorarlo.</p>
+<p style="font-family:system-ui,sans-serif;font-size:13px;color:#999;">Tu correo: {{ .Email }}</p>
+---
+
+Nota: Si tu proyecto muestra otras variables en el editor (por ejemplo SiteURL), puedes añadir una línea con {{ .SiteURL }} para depuración. La importante para el enlace es {{ .ConfirmationURL }}.
+
+=== Redirect URLs en Supabase ===
+Para que el enlace del correo te lleve a la pantalla de inicio local, en Dashboard → Authentication → URL configuration → Redirect URLs, añade:
+http://localhost:5173/inicio
+(Y cuando tengas producción, la URL real + /inicio)
+
+La app ya envía emailRedirectTo a .../inicio al pedir el magic link.

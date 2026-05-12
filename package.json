@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "roci:convert": "node scripts/roci_wide_to_long.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
