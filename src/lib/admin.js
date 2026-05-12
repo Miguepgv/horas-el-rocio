@@ -7,10 +7,6 @@ function parseList(raw) {
     .filter(Boolean)
 }
 
-/**
- * Login solo-correo: super admin, VITE_ADMIN_EMAILS o fila en app_admins.
- * No envía correos; solo consulta Supabase.
- */
 export async function isAdminEmailForInsecureLogin(supabase, rawEmail) {
   const email = String(rawEmail ?? '').trim().toLowerCase()
   if (!email) return false
@@ -33,7 +29,6 @@ export function isSuperAdminSession(session) {
   return Boolean(superEmail && email && email === superEmail)
 }
 
-/** Comprueba env + fila en app_admins (correo en minúsculas). */
 export async function resolveAdminAccess(supabase, session) {
   const email = session?.user?.email?.trim().toLowerCase()
   if (!email || !supabase) {

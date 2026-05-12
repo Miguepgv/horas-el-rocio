@@ -92,12 +92,7 @@ export default function InicioPage({ session, onSignOut }) {
         .order('created_at', { ascending: false })
         .limit(8)
       if (cancelled) return
-      if (error) {
-        if (!isMissingTableError(error)) {
-          /* opcional: log */
-        }
-        return
-      }
+      if (error) return
       const unseen = (data ?? []).filter(
         (r) => !ack || String(r.created_at) > ack,
       )
@@ -169,9 +164,7 @@ export default function InicioPage({ session, onSignOut }) {
       .limit(1)
       .maybeSingle()
 
-    if (plEmail.error && !isMissingTableError(plEmail.error)) {
-      /* handled below */
-    } else if (plEmail.data) {
+    if (plEmail.data) {
       planillaRow = plEmail.data
     }
 
@@ -331,8 +324,7 @@ export default function InicioPage({ session, onSignOut }) {
     () =>
       extras.payrollIncluded > 0 ||
       extras.parking > 0 ||
-      extras.gasoil > 0 ||
-      extras.isFixed,
+      extras.gasoil > 0,
     [extras],
   )
 
@@ -354,7 +346,6 @@ export default function InicioPage({ session, onSignOut }) {
     await reloadData()
   }
 
-  /** Solo días del evento (15–26 may 2026). */
   const scheduleTableDays = useMemo(
     () => [...eachEventDateISO()].sort(),
     [],
@@ -762,39 +753,48 @@ export default function InicioPage({ session, onSignOut }) {
               </p>
               {showMoneyExtras ? (
                 <>
-                  {extras.isFixed ? (
+                  {extras.payrollIncluded > 0 ? (
                     <p className="muted small">
-                      Trabajador <strong>fijo</strong>: se descuenta la nómina prevista del evento
-                      sobre el bruto por horas.
+                      Parte del cobro va por <strong>nómina</strong> (planilla o administración): se
+                      resta del bruto estimado por horas.
                     </p>
-                  ) : extras.payrollIncluded > 0 ? (
+                  ) : extras.parking > 0 || extras.gasoil > 0 ? (
                     <p className="muted small">
-                      Parte del cobro va por <strong>nómina</strong> (lo marca el encargado en la
-                      planilla o en administración): esos € se restan del bruto estimado por horas.
+                      Extras indicados en tu fila de planilla o en administración.
                     </p>
-                  ) : (
+                  ) : extras.isFixed ? (
                     <p className="muted small">
-                      Incluye extras (gasoil, parking) indicados en tu fila de planilla o en
-                      administración.
+                      Trabajador <strong>fijo</strong>: el bruto por horas sigue la tarifa del
+                      evento.
                     </p>
-                  )}
+                  ) : null}
                   <ul className="money-list">
-                    <li>
-                      Por nómina (evento):{' '}
-                      <strong>{extras.payrollIncluded.toFixed(2)} €</strong>
-                    </li>
+                    {extras.payrollIncluded > 0 ? (
+                      <li>
+                        Por nómina (evento):{' '}
+                        <strong>{extras.payrollIncluded.toFixed(2)} €</strong>
+                      </li>
+                    ) : null}
                     <li>
                       Bruto por horas (estim.):{' '}
                       <strong>{extras.grossFromHours.toFixed(2)} €</strong>
                     </li>
-                    <li>
-                      Tras descontar nómina (horas en mano):{' '}
-                      <strong>{extras.extraAfterPayroll.toFixed(2)} €</strong>
-                    </li>
-                    <li>
-                      Parking: <strong>{extras.parking.toFixed(2)} €</strong> · Gasoil:{' '}
-                      <strong>{extras.gasoil.toFixed(2)} €</strong>
-                    </li>
+                    {extras.payrollIncluded > 0 ? (
+                      <li>
+                        Tras descontar nómina (horas en mano):{' '}
+                        <strong>{extras.extraAfterPayroll.toFixed(2)} €</strong>
+                      </li>
+                    ) : null}
+                    {extras.parking > 0 ? (
+                      <li>
+                        Parking: <strong>{extras.parking.toFixed(2)} €</strong>
+                      </li>
+                    ) : null}
+                    {extras.gasoil > 0 ? (
+                      <li>
+                        Gasoil: <strong>{extras.gasoil.toFixed(2)} €</strong>
+                      </li>
+                    ) : null}
                     <li className="money-total">
                       Total aprox. en mano (horas + extras):{' '}
                       <strong>{extras.totalCashExtra.toFixed(2)} €</strong>

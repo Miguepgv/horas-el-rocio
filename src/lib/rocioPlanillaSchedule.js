@@ -1,10 +1,3 @@
-/**
- * Convierte una fila de `rocio_horario_planilla` al mismo formato que `event_schedule_slots`
- * para la pantalla del trabajador.
- *
- * La hoja empieza en el primer SÁBADO del grid (no incluye el viernes previo).
- * Debe coincidir con scripts/roci_wide_to_long.mjs (--first-date).
- */
 export const ROCIO_PLANILLA_GRID_FIRST_DAY = '2026-05-16'
 
 function sanitizeRaw(s) {
@@ -167,12 +160,6 @@ function processDayPair(slots, fecha, a, b, workerId) {
   }
 }
 
-/**
- * @param {Record<string, unknown>} row – fila `rocio_horario_planilla`
- * @param {string|null} workerId – `event_workers.id` si existe
- * @param {string} [firstDayIso] – por defecto ROCIO_PLANILLA_GRID_FIRST_DAY
- * @returns {Array<object>} mismo aspecto que filas de `event_schedule_slots`
- */
 export function planillaRowToSlots(
   row,
   workerId,

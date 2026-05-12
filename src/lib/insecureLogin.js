@@ -6,12 +6,10 @@ const STORAGE_KEY = 'rr_horas_insecure_login_email'
 
 /* global __INSECURE_EMAIL_LOGIN_RAW__ */
 
-/** Valor crudo inyectado al compilar (para mensaje de ayuda en login normal). */
 export function insecureEmailLoginCompiledRaw() {
   return __INSECURE_EMAIL_LOGIN_RAW__
 }
 
-/** Valor de VITE_INSECURE_EMAIL_LOGIN leído en vite.config (loadEnv desde la carpeta del proyecto). */
 export function insecureEmailLoginEnabled() {
   const raw = __INSECURE_EMAIL_LOGIN_RAW__
   if (raw === true || raw === 1) return true
@@ -37,7 +35,6 @@ export function persistStoredInsecureEmail(email) {
   try {
     localStorage.setItem(STORAGE_KEY, e)
   } catch {
-    /* ignore */
   }
 }
 
@@ -45,11 +42,9 @@ export function clearStoredInsecureEmail() {
   try {
     localStorage.removeItem(STORAGE_KEY)
   } catch {
-    /* ignore */
   }
 }
 
-/** Mismo user_id siempre para el mismo correo (fichajes por dispositivo). */
 export async function deterministicUserIdFromEmail(email) {
   const normalized = String(email ?? '').trim().toLowerCase()
   const data = new TextEncoder().encode(`rocio-insecure-v1:${normalized}`)
@@ -82,7 +77,6 @@ export function buildInsecureSession(email, userId) {
   }
 }
 
-/** Trabajador: correo en columna `correo` de la planilla o en plantilla `event_workers` (sin distinguir mayúsculas). */
 export async function validateWorkerEmailRegistered(supabase, email) {
   const em = String(email ?? '').trim().toLowerCase()
   if (!em || !supabase) return false
@@ -96,7 +90,6 @@ export async function validateWorkerEmailRegistered(supabase, email) {
   return Boolean(pl.data?.id || ew.data?.id)
 }
 
-/** Modo solo-correo: entra administrador (lista admins) o trabajador dado de alta en planilla/plantilla. */
 export async function canInsecureLoginWithEmail(supabase, email) {
   if (await isAdminEmailForInsecureLogin(supabase, email)) return true
   return validateWorkerEmailRegistered(supabase, email)

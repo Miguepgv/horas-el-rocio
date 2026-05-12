@@ -1,4 +1,3 @@
-/** Une mensaje PostgREST / Postgres para mostrar o analizar. */
 export function formatSupabaseErrText(err) {
   if (err == null) return ''
   if (typeof err === 'string') return err
@@ -11,10 +10,6 @@ export function formatSupabaseErrText(err) {
   return parts.join(' — ')
 }
 
-/**
- * Errores típicos: tabla aún no expuesta en PostgREST (PGRST205), caché vieja, relación inexistente.
- * Evitamos el patrón genérico "does not exist" (da falsos positivos con tipos, funciones, etc.).
- */
 export function isMissingTableError(err) {
   const m = formatSupabaseErrText(err)
   const code = typeof err === 'object' && err?.code != null ? String(err.code) : ''
@@ -23,11 +18,10 @@ export function isMissingTableError(err) {
   if (/could not find the table/i.test(m)) return true
   if (/could not find a relationship/i.test(m)) return true
   if (/relation\s+["']?[^"']+["']?\s+does not exist/i.test(m)) return true
-  if (/42P01/i.test(code)) return true /* undefined_table */
+  if (/42P01/i.test(code)) return true
   return false
 }
 
-/** Texto amable si parece falta de tablas / caché PostgREST; si no, el error real. */
 export function friendlySupabaseError(err) {
   const m = formatSupabaseErrText(err)
   if (!isMissingTableError(err)) {

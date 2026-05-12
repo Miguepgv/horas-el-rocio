@@ -1,7 +1,6 @@
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 import { eurosForIntervalMs } from './elRocioRates.js'
 
-/** Lunes=1 … Domingo=7 (fecha local). */
 export function weekdayMonSunFromDate(d) {
   const j = d.getDay()
   return j === 0 ? 7 : j
@@ -23,7 +22,6 @@ function isNoPay(p) {
   return Boolean(p?.no_pay)
 }
 
-/** Tarifa €/h (legacy por día de semana; solo etiqueta si hace falta). */
 export function applicableHourlyRate(weekdayMonSun) {
   const segs = [...PAY_EVENT_EL_ROCIO.segments].sort(
     (a, b) => a.sortOrder - b.sortOrder,
@@ -34,7 +32,6 @@ export function applicableHourlyRate(weekdayMonSun) {
   return 0
 }
 
-/** Fechas ISO entre inicio y fin del evento (inclusive). */
 export function eachEventDateISO() {
   const out = []
   const a = parseLocalDate(PAY_EVENT_EL_ROCIO.dateFrom)
@@ -52,7 +49,6 @@ function punchesForCalendarDay(punches, dayIso) {
   })
 }
 
-/** Pares entrada→salida (solo cobro), orden cronológico global. */
 export function paidInOutPairs(punches) {
   const list = punches
     .filter((p) => !isNoPay(p))
@@ -71,11 +67,6 @@ export function paidInOutPairs(punches) {
   return pairs
 }
 
-/**
- * Tramos cobrados que solapan un día local: cada tramo es un par entrada→salida global con
- * las horas de ese par que caen dentro del día (alineado con paidEurosOverlappingDay).
- * @returns {Array<{ inAt: Date, outAt: Date, hoursOnDay: number }>}
- */
 export function paidShiftsOverlappingDay(punches, dayIso) {
   const dayStart = parseLocalDate(dayIso)
   const dayEnd = new Date(dayStart)
@@ -94,7 +85,6 @@ export function paidShiftsOverlappingDay(punches, dayIso) {
   return segments
 }
 
-/** Horas con cobro que caen en ese día local (puede ser parte de un cruce de medianoche). */
 export function workedPaidHoursOverlappingDay(punches, dayIso) {
   const dayStart = parseLocalDate(dayIso)
   const dayEnd = new Date(dayStart)
@@ -108,7 +98,6 @@ export function workedPaidHoursOverlappingDay(punches, dayIso) {
   return ms / 3_600_000
 }
 
-/** Horas sin cobro solapadas con el día. */
 export function workedNoPayHoursOverlappingDay(punches, dayIso) {
   const dayStart = parseLocalDate(dayIso)
   const dayEnd = new Date(dayStart)
@@ -135,7 +124,6 @@ export function workedNoPayHoursOverlappingDay(punches, dayIso) {
   return ms / 3_600_000
 }
 
-/** Horas fichadas mismo día (todas), emparejando in/out del día — vista simple. */
 export function workedHoursForDay(punches, dayIso) {
   const list = punchesForCalendarDay(punches, dayIso)
     .slice()
@@ -154,7 +142,6 @@ export function workedHoursForDay(punches, dayIso) {
   return hours
 }
 
-/** € cobro en ese día (tramos por minuto con tarifa variable). */
 export function paidEurosOverlappingDay(punches, dayIso) {
   const dayStart = parseLocalDate(dayIso)
   const dayEnd = new Date(dayStart)
@@ -207,7 +194,6 @@ export function buildDailySummary(punches) {
   return { rows, totalHours, totalGross }
 }
 
-/** Fijo: extra horas = bruto horas − nómina evento; sumar parking y gasoil. */
 export function fixedWorkerExtras(profile, totalGrossHoursPay) {
   const payroll = Number(profile?.payroll_event_euros ?? 0)
   const parking = Number(profile?.parking_euros ?? 0)

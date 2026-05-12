@@ -28,13 +28,6 @@ function fmtDateEs(isoYmd) {
   })
 }
 
-/**
- * @param {{
- *   rows: Array<Record<string, unknown>>
- *   punchByEmail: Record<string, Array<{ id: string, punch_type: string, punched_at: string, no_pay?: boolean }>>
- *   onCorregir: (email: string, nombre: string) => void
- * }} props
- */
 export default function AdminPlanillaFichajesTab({ rows, punchByEmail, onCorregir }) {
   const dayList = useMemo(() => [...eachEventDateISO()].sort(), [])
 
