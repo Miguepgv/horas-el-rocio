@@ -76,10 +76,6 @@ export default function ManageAdminsModal({ open, onClose }) {
             Cerrar
           </button>
         </div>
-        <p className="muted small">
-          Solo el super administrador puede añadir o quitar correos con acceso a la zona
-          de administración.
-        </p>
 
         <form className="admin-add-form" onSubmit={addAdmin}>
           <label htmlFor="new-admin-email">Correo nuevo admin</label>

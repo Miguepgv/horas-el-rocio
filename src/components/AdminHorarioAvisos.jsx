@@ -40,10 +40,6 @@ export default function AdminHorarioAvisos() {
   return (
     <section className="card admin-card">
       <p className="label-up">Aviso de cambios de horario</p>
-      <p className="muted small">
-        Se muestra como aviso en la pantalla principal (no es notificación push del móvil: eso
-        requiere Firebase u otra integración aparte).
-      </p>
       <form className="worker-fin-form" onSubmit={send}>
         <label htmlFor="av-text">Mensaje</label>
         <textarea
@@ -52,9 +48,7 @@ export default function AdminHorarioAvisos() {
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-        <label htmlFor="av-target">
-          Solo un correo (opcional). Vacío = <strong>todos</strong> los que entren.
-        </label>
+        <label htmlFor="av-target">Correo (opcional)</label>
         <input
           id="av-target"
           type="email"

@@ -1,13 +1,5 @@
 import BrandLogo from '../components/BrandLogo.jsx'
-import {
-  insecureEmailLoginCompiledRaw,
-  insecureEmailLoginEnabled,
-} from '../lib/insecureLogin.js'
-import {
-  supabaseAnonKeyLength,
-  supabaseUrlPreview,
-} from '../lib/supabase.js'
-
+import { insecureEmailLoginEnabled } from '../lib/insecureLogin.js'
 export default function LoginPage({
   supabaseConfigured: configured,
   insecureBusy = false,
@@ -36,24 +28,13 @@ export default function LoginPage({
         <header className="header header-login">
           <BrandLogo className="brand-logo-md" />
           <h1>Horas — El Rocío</h1>
-          <p className="muted">
-            Escribe tu correo y pulsa Entrar: no se manda ningún correo. Si eres administrador,
-            entras directo. Si eres trabajador/a, el correo debe coincidir con la columna
-            «Correo» de la planilla (o con la plantilla del evento).
-          </p>
         </header>
 
         {!configured && (
           <div className="banner error">
             <p>
-              Configura `.env` aquí (esta carpeta del proyecto, junto a `package.json`):
-              `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. Guarda el archivo y{' '}
-              <strong>reinicia</strong> el servidor (`Ctrl+C` y otra vez `npm run dev`).
-            </p>
-            <p className="muted small" style={{ marginTop: '0.5rem' }}>
-              Lo que ve Vite ahora: URL → {supabaseUrlPreview()} · clave →{' '}
-              {supabaseAnonKeyLength()} caracteres (hace falta ≥ 20 y URL https). Si la
-              clave sale 0, Vite no está leyendo tu `.env` (mala carpeta o no reiniciaste).
+              Faltan <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code> en{' '}
+              <code>.env</code>. Reinicia <code>npm run dev</code> tras guardar.
             </p>
           </div>
         )}
@@ -75,11 +56,6 @@ export default function LoginPage({
           </button>
         </form>
 
-        <p className="muted small login-security-note">
-          El correo se guarda en este móvil: la próxima vez que abras la app seguirás dentro
-          hasta que pulses «Cerrar sesión».
-        </p>
-
         {status && (
           <p className={`hint ${status.type === 'error' ? 'error' : 'ok'}`}>{status.message}</p>
         )}
@@ -94,24 +70,13 @@ export default function LoginPage({
       <header className="header header-login">
         <BrandLogo className="brand-logo-md" />
         <h1>Horas — El Rocío</h1>
-        <p className="muted">
-          {loginMode === 'password'
-            ? 'Entra con correo y contraseña (recomendado: no depende de límites de correo).'
-            : 'Te enviamos un enlace al correo (puede haber límite de envíos en Supabase).'}
-        </p>
       </header>
 
       {!configured && (
         <div className="banner error">
           <p>
-            Configura `.env` aquí (esta carpeta del proyecto, junto a `package.json`):
-            `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. Guarda el archivo y{' '}
-            <strong>reinicia</strong> el servidor (`Ctrl+C` y otra vez `npm run dev`).
-          </p>
-          <p className="muted small" style={{ marginTop: '0.5rem' }}>
-            Lo que ve Vite ahora: URL → {supabaseUrlPreview()} · clave →{' '}
-            {supabaseAnonKeyLength()} caracteres (hace falta ≥ 20 y URL https). Si la
-            clave sale 0, Vite no está leyendo tu `.env` (mala carpeta o no reiniciaste).
+            Faltan <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code> en{' '}
+            <code>.env</code>. Reinicia <code>npm run dev</code> tras guardar.
           </p>
         </div>
       )}
@@ -136,28 +101,6 @@ export default function LoginPage({
           Enlace al correo
         </button>
       </div>
-
-      <p className="muted small login-security-note">
-        El correo en la <strong>planilla</strong> sirve para emparejar horarios y fichajes, pero{' '}
-        <strong>no puede ser el único control de acceso</strong>: cualquiera podría escribir el
-        correo de otra persona. Por eso hace falta <strong>una prueba</strong> (contraseña o
-        enlace al correo) la primera vez. Después la <strong>sesión se guarda en el móvil</strong>{' '}
-        y no hace falta repetir cada día hasta que pulsen «Cerrar sesión».
-      </p>
-
-      <p className="muted small login-insecure-hint">
-        Si quieres <strong>solo correo</strong> (sin contraseña ni enlace): en <code>.env</code> pon{' '}
-        <code>VITE_INSECURE_EMAIL_LOGIN=true</code>, <strong>guarda el archivo (Ctrl+S)</strong>, para
-        el servidor y vuelve a <code>npm run dev</code>. En Supabase ejecuta{' '}
-        <code>scripts/supabase_disable_rls_insecure_login.sql</code> (modo interno, sin seguridad
-        real). Si el .env falla, crea un archivo vacío <code>insecure-login.flag</code> en la raíz
-        del proyecto y reinicia Vite.
-      </p>
-      <p className="muted small">
-        Lo que compiló Vite para ese modo ahora mismo: «
-        <strong>{String(insecureEmailLoginCompiledRaw() || '(vacío)')}</strong>» — si sale vacío,
-        el .env no estaba guardado o Vite no se reinició tras guardar.
-      </p>
 
       {loginMode === 'password' ? (
         <div className="card login-card-block">
@@ -237,14 +180,6 @@ export default function LoginPage({
               </p>
             </form>
           )}
-
-          <p className="muted small login-hint-box">
-            Recomendación en Supabase (solo una vez):{' '}
-            <strong>Authentication → Providers → Email</strong>: desactiva «Confirm email»
-            si son cuentas internas; así el alta con contraseña no manda correo de
-            confirmación. Para más envíos de enlace mágico, configura{' '}
-            <strong>SMTP propio</strong> en el mismo apartado.
-          </p>
         </div>
       ) : (
         <form className="card" onSubmit={onMagicSubmit}>

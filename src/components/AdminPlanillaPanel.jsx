@@ -33,7 +33,6 @@ function planillaCsvRowToPayload(rec) {
   return payload
 }
 
-/** Asegura claves € y strings editables en inputs controlados. */
 function normalizePlanillaRow(r) {
   const o = { ...r }
   for (const k of EXTRA_KEYS) {
@@ -324,12 +323,6 @@ export default function AdminPlanillaPanel() {
   return (
     <section className="card admin-card">
       <p className="label-up">Planilla y fichajes (Supabase)</p>
-      <p className="muted small">
-        En <strong>Celdas horario</strong> editas nombre, correo y turnos previstos (días{' '}
-        <strong>d01_a…d11_b</strong>). En <strong>Turnos picados</strong> ves por persona y por
-        día las entradas/salidas reales (como el trabajador en «Mi horario») y puedes abrir el
-        editor para corregir horas.
-      </p>
 
       <div className="tabs-bar admin-planilla-tabs" role="tablist">
         <button
@@ -362,20 +355,8 @@ export default function AdminPlanillaPanel() {
         />
       ) : (
         <>
-          <p className="muted small planilla-scroll-hint">
-            La columna <strong>Nombre</strong> queda fija al desplazar en horizontal. Celdas:{' '}
-            <code>9:00</code>, rangos <code>8 A 20</code> o <strong>D</strong> descanso.
-          </p>
           <div className="card subpanel planilla-import-block">
             <p className="label-up">Importar planilla (CSV ancha)</p>
-            <p className="muted small">
-              Pega un CSV exportado desde Excel: <strong>nombre</strong>, las 22 celdas de turno
-              (pares por día), <strong>correo</strong> al final; o cabeceras con{' '}
-              <code>d01_a</code>…<code>d11_b</code>. Opcional: columnas <code>nomina</code>,{' '}
-              <code>gasoil</code>, <code>parking</code> (€).{' '}
-              <strong>Sustituye toda la planilla</strong> en Supabase (se borran las filas
-              actuales).
-            </p>
             <textarea
               className="planilla-import-textarea"
               rows={5}

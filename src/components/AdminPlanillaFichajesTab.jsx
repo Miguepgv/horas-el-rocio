@@ -39,11 +39,6 @@ export default function AdminPlanillaFichajesTab({ rows, punchByEmail, onCorregi
 
   return (
     <div className="admin-fichajes-tab">
-      <p className="muted small">
-        Misma vista que <strong>Mi horario</strong> del trabajador: por día, entradas/salidas
-        picadas y total del día. Pulsa <strong>Corregir fichajes</strong> para editar horas en
-        Supabase.
-      </p>
       {workers.length === 0 ? (
         <p className="muted">No hay filas con correo asignado.</p>
       ) : (

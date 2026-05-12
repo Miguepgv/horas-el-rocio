@@ -133,10 +133,6 @@ export default function PlanillaFichajesModal({
             </>
           ) : null}
         </p>
-        <p className="muted small">
-          Ajusta la hora si picaron mal o no coincide con el horario previsto. Los cambios se
-          guardan en Supabase (<code>punches</code>).
-        </p>
 
         <ul className="planilla-fichajes-list">
           {sorted.length === 0 ? (

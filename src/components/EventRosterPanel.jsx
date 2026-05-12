@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 import { parseLongSlotsCsv, parseRosterCsv } from '../lib/csvSchedule.js'
 import { friendlySupabaseError } from '../lib/dbErrors.js'
 
@@ -210,13 +209,6 @@ export default function EventRosterPanel() {
   return (
     <section className="card admin-card">
       <p className="label-up">Plantilla del evento (nombre, correo, horarios)</p>
-      <p className="muted small">
-        La app te reconoce si el <strong>correo</strong> de esta tabla es el mismo con el
-        que la persona hace login (tabla <code>event_workers</code>). No hace falta
-        rellenar la columna UUID: suele quedar vacía. Lo mismo vale si usáis solo la{' '}
-        <strong>planilla horario</strong>: el correo allí debe coincidir. Turnos
-        partidos en CSV de franjas: <strong>turno</strong> 1 y 2 el mismo día.
-      </p>
 
       <div className="table-wrap roster-table-wrap">
         <table className="rules-table roster-edit-table">
@@ -300,9 +292,6 @@ export default function EventRosterPanel() {
       <hr className="admin-hr" />
 
       <p className="label-up">Importar nombres (CSV)</p>
-      <p className="muted small">
-        Columnas: <code>nombre,correo</code>. Correo opcional.
-      </p>
       <textarea
         className="csv-textarea"
         rows={4}
@@ -317,11 +306,6 @@ export default function EventRosterPanel() {
       <hr className="admin-hr" />
 
       <p className="label-up">Importar horarios / turnos partidos (CSV)</p>
-      <p className="muted small">
-        Mismo día con <strong>turno</strong> 1 y 2 = turno partido (dos filas). Si solo tienes hora de
-        entrada, deja <strong>salida</strong> vacía o usa el formato de 7 columnas sin salida. El
-        domingo u otro día con entrada y salida, mete la hora en <strong>salida</strong>.
-      </p>
       <pre className="csv-sample">
         nombre,correo,fecha,turno,entrada,salida,cruza,descanso{'\n'}
         MARIA JOSE,,2026-05-15,1,12:00,,false,false{'\n'}
@@ -341,10 +325,6 @@ export default function EventRosterPanel() {
       <button type="button" className="secondary" disabled={busy} onClick={importSlots}>
         Importar franjas
       </button>
-
-      <p className="muted small admin-tip">
-        Evento: {PAY_EVENT_EL_ROCIO.dateFrom} → {PAY_EVENT_EL_ROCIO.dateTo}.
-      </p>
 
       {msg && (
         <p className={`hint ${msg.type === 'error' ? 'error' : 'ok'}`}>{msg.text}</p>

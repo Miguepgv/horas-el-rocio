@@ -426,11 +426,7 @@ export default function InicioPage({ session, onSignOut }) {
 
       {!loadingData && !eventWorker && (
         <p className="banner roster-hint">
-          No hay fila que coincida con <strong>{email}</strong>. Si acabas de entrar por
-          WhatsApp, tu correo queda registrado: el encargado puede elegirlo en{' '}
-          <strong>Administración → Planilla horario</strong> (desplegable de correo junto a tu
-          nombre) o ponerlo en la <strong>plantilla del evento</strong>. Al guardar, la próxima
-          vez que entres ya verás horario y fichaje.
+          No hay planilla para <strong>{email}</strong>. Consulta a tu encargado.
         </p>
       )}
 
@@ -470,7 +466,7 @@ export default function InicioPage({ session, onSignOut }) {
                   </span>
                 ))
               ) : (
-                'Sin horario cargado (tu encargado puede cargarlo en Administración).'
+                'Sin horario cargado.'
               )}
             </p>
           </div>
@@ -565,10 +561,6 @@ export default function InicioPage({ session, onSignOut }) {
 
         {tab === 'horario' && (
           <div className="tab-panel">
-            <p className="muted small tab-intro">
-              Días del evento ({PAY_EVENT_EL_ROCIO.dateFrom} → {PAY_EVENT_EL_ROCIO.dateTo}). Los
-              días pasados muestran lo fichado; los futuros, lo previsto si consta en planilla.
-            </p>
             <div className="table-wrap">
               <table className="rules-table schedule-table">
                 <thead>
@@ -753,21 +745,6 @@ export default function InicioPage({ session, onSignOut }) {
               </p>
               {showMoneyExtras ? (
                 <>
-                  {extras.payrollIncluded > 0 ? (
-                    <p className="muted small">
-                      Parte del cobro va por <strong>nómina</strong> (planilla o administración): se
-                      resta del bruto estimado por horas.
-                    </p>
-                  ) : extras.parking > 0 || extras.gasoil > 0 ? (
-                    <p className="muted small">
-                      Extras indicados en tu fila de planilla o en administración.
-                    </p>
-                  ) : extras.isFixed ? (
-                    <p className="muted small">
-                      Trabajador <strong>fijo</strong>: el bruto por horas sigue la tarifa del
-                      evento.
-                    </p>
-                  ) : null}
                   <ul className="money-list">
                     {extras.payrollIncluded > 0 ? (
                       <li>
@@ -801,12 +778,7 @@ export default function InicioPage({ session, onSignOut }) {
                     </li>
                   </ul>
                 </>
-              ) : (
-                <p className="muted small">
-                  Si tienes nómina en el evento o extras de parking/gasoil, tu encargado puede
-                  indicarlo en la planilla (columnas Nómina, Gasoil, Parking) o en administración.
-                </p>
-              )}
+              ) : null}
             </div>
           </div>
         )}
