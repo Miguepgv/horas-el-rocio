@@ -6,6 +6,7 @@
   "scripts": {
     "roci:convert": "node scripts/roci_wide_to_long.mjs",
     "pwa:icons": "node scripts/writePwaPngIcons.mjs",
+    "icons:from-logo": "node scripts/resizePwaIconsFromSource.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -26,6 +27,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "sharp": "^0.34.5",
     "vite": "^8.0.12"
   }
 }
