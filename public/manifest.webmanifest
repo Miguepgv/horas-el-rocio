@@ -1,4 +1,5 @@
 {
+  "id": "horas-el-rocio",
   "name": "Horas — El Rocío",
   "short_name": "Horas",
   "description": "Horario y fichaje — El Rocío",
@@ -8,24 +9,26 @@
   "orientation": "portrait-primary",
   "background_color": "#f6f4f1",
   "theme_color": "#b45309",
+  "categories": ["business", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
