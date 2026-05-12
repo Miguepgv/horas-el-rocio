@@ -1,4 +1,5 @@
 import BrandLogo from '../components/BrandLogo.jsx'
+import { APP_SCREEN_TITLE } from '../lib/brand.js'
 import { insecureEmailLoginEnabled } from '../lib/insecureLogin.js'
 export default function LoginPage({
   supabaseConfigured: configured,
@@ -27,7 +28,7 @@ export default function LoginPage({
       <div className="shell">
         <header className="header header-login">
           <BrandLogo className="brand-logo-md" />
-          <h1>Horas — El Rocío</h1>
+          <h1>{APP_SCREEN_TITLE}</h1>
         </header>
 
         {!configured && (
@@ -69,7 +70,7 @@ export default function LoginPage({
     <div className="shell">
       <header className="header header-login">
         <BrandLogo className="brand-logo-md" />
-        <h1>Horas — El Rocío</h1>
+        <h1>{APP_SCREEN_TITLE}</h1>
       </header>
 
       {!configured && (

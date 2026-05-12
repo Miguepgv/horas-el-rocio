@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo.jsx'
 import ManageAdminsModal from '../components/ManageAdminsModal.jsx'
 import InstallAppHint from '../components/InstallAppHint.jsx'
+import { APP_SCREEN_TITLE } from '../lib/brand.js'
 import { supabase } from '../lib/supabase'
 import { resolveAdminAccess } from '../lib/admin.js'
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
@@ -375,7 +376,7 @@ export default function InicioPage({ session, onSignOut }) {
         <div className="header-brand-left">
           <BrandLogo className="brand-logo-sm" />
           <div>
-            <h1>Horas — El Rocío</h1>
+            <h1>{APP_SCREEN_TITLE}</h1>
             <p className="muted">{PAY_EVENT_EL_ROCIO.label}</p>
           </div>
         </div>
