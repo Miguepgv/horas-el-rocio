@@ -6,7 +6,6 @@
   "scripts": {
     "roci:convert": "node scripts/roci_wide_to_long.mjs",
     "pwa:icons": "node scripts/writePwaPngIcons.mjs",
-    "prebuild": "node scripts/writePwaPngIcons.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",

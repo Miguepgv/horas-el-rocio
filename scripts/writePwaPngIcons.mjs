@@ -1,6 +1,7 @@
 /**
  * Genera iconos PNG sólidos (#b45309) para el manifest PWA / PWABuilder.
- * Uso: node scripts/writePwaPngIcons.mjs
+ * Uso manual: npm run pwa:icons
+ * Si sustituyes icon-192.png / icon-512.png a mano, no ejecutes esto (los pisaría).
  */
 import fs from 'node:fs'
 import path from 'node:path'
