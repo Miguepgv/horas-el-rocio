@@ -672,6 +672,22 @@
   padding-top: 0.25rem;
 }
 
+.tab-panel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.planilla-export-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0 0.5rem;
+}
+
 .tab-intro {
   margin: 0 0 0.75rem;
 }

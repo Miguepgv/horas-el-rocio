@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo.jsx'
 import ManageAdminsModal from '../components/ManageAdminsModal.jsx'
@@ -27,6 +27,7 @@ import {
   isMissingTableError,
 } from '../lib/dbErrors.js'
 import { planillaRowToSlots } from '../lib/rocioPlanillaSchedule.js'
+import { downloadMiHorarioXlsx } from '../lib/exportScheduleXlsx.js'
 import { escapeForILikeExact } from '../lib/emailMatch.js'
 import { sessionIsInsecure } from '../lib/insecureLogin.js'
 
@@ -46,6 +47,44 @@ function fmtDateEs(isoYmd) {
     day: 'numeric',
     month: 'short',
   })
+}
+
+function formatFichadoPlainForExport(punches, iso) {
+  const shifts = paidShiftsOverlappingDay(punches, iso)
+  const hPaid = workedPaidHoursOverlappingDay(punches, iso)
+  const hNp = workedNoPayHoursOverlappingDay(punches, iso)
+  const ePaid = paidEurosOverlappingDay(punches, iso)
+  const avgRate = hPaid > 0 ? ePaid / hPaid : null
+  const hoursLegacy = workedHoursForDay(punches, iso)
+  const d = parseLocalDate(iso)
+  const startDay = new Date()
+  startDay.setHours(0, 0, 0, 0)
+  const past = d < startDay
+
+  if (shifts.length > 0) {
+    const lines = shifts.map(
+      (seg) =>
+        `Entrada ${fmtClock(seg.inAt.toISOString())} → Salida ${fmtClock(seg.outAt.toISOString())} (${formatHoursMinutes(seg.hoursOnDay)})`,
+    )
+    let footer = `Total día (cobro): ${formatHoursMinutes(hPaid)}`
+    if (ePaid > 0) footer += ` · ${ePaid.toFixed(2)} €`
+    if (hPaid > 0 && avgRate != null) footer += ` (~${avgRate.toFixed(2)} €/h med.)`
+    lines.push(footer)
+    if (hNp > 0) lines.push(`Sin cobro: ${formatHoursMinutes(hNp)}`)
+    return lines.join('\n')
+  }
+  if (hNp > 0) return `${formatHoursMinutes(hNp)} sin cobro`
+  if (hPaid + hNp > 0) {
+    if (hPaid > 0) {
+      let s = `${formatHoursMinutes(hPaid)} cobro`
+      if (avgRate != null) s += ` (~${avgRate.toFixed(2)} €/h)`
+      return s
+    }
+    return ''
+  }
+  if (hoursLegacy > 0) return `${formatHoursMinutes(hoursLegacy)} (detalle)`
+  if (past) return 'Sin fichajes'
+  return '—'
 }
 
 export default function InicioPage({ session, onSignOut }) {
@@ -353,6 +392,50 @@ export default function InicioPage({ session, onSignOut }) {
     [],
   )
 
+  const horarioXlsxRows = useMemo(() => {
+    return scheduleTableDays.map((iso) => {
+      const d = parseLocalDate(iso)
+      const wd = weekdayMonSunFromDate(d)
+      const dia = `${weekdayShort(wd)} ${fmtDateEs(iso)}`
+      const slotList = scheduleSlots
+        .filter((s) => s.work_date === iso)
+        .sort((a, b) => a.slot_index - b.slot_index)
+      let previsto = '—'
+      if (slotList.length > 0) {
+        previsto = slotList
+          .map((sl) => {
+            if (sl.is_rest) return `Turno ${sl.slot_index}: Descanso`
+            const st = sl.start_time ? String(sl.start_time).slice(0, 5) : '—'
+            const en = sl.end_time ? String(sl.end_time).slice(0, 5) : '—'
+            let line = `Turno ${sl.slot_index}: Entrada ${st} → Salida ${en}`
+            if (sl.crosses_midnight) line += ' (+1 día)'
+            return line
+          })
+          .join('\n')
+      }
+      const fichado = formatFichadoPlainForExport(punches, iso)
+      return { dia, previsto, fichado }
+    })
+  }, [scheduleTableDays, scheduleSlots, punches])
+
+  const downloadHorarioXlsx = useCallback(async () => {
+    setPunchMsg(null)
+    try {
+      await downloadMiHorarioXlsx({
+        appTitle: APP_SCREEN_TITLE,
+        workerLine: eventWorker?.full_name
+          ? `${eventWorker.full_name} · ${email}`
+          : email,
+        rows: horarioXlsxRows,
+      })
+    } catch (e) {
+      setPunchMsg({
+        type: 'error',
+        text: `No se pudo descargar el Excel: ${e?.message ?? e}`,
+      })
+    }
+  }, [email, eventWorker, horarioXlsxRows])
+
   function dismissHorarioAviso() {
     if (horarioBanner?.createdAt) {
       localStorage.setItem(
@@ -565,6 +648,19 @@ export default function InicioPage({ session, onSignOut }) {
 
         {tab === 'horario' && (
           <div className="tab-panel">
+            <div className="tab-panel-toolbar">
+              <button
+                type="button"
+                className="secondary"
+                disabled={loadingData}
+                onClick={downloadHorarioXlsx}
+              >
+                Descargar Excel (.xlsx)
+              </button>
+              <span className="muted small">
+                Mismo horario que la tabla (abrir en Excel e imprimir).
+              </span>
+            </div>
             <div className="table-wrap">
               <table className="rules-table schedule-table">
                 <thead>

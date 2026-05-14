@@ -8,6 +8,7 @@ import {
   ROCIO_PLANILLA_EXTRA_KEYS as EXTRA_KEYS,
 } from '../lib/rocioPlanillaKeys.js'
 import { parsePlanillaWideCsv } from '../lib/csvSchedule.js'
+import { downloadPlanillaHorarioXlsx } from '../lib/exportScheduleXlsx.js'
 import AdminPlanillaFichajesTab from './AdminPlanillaFichajesTab.jsx'
 import PlanillaFichajesModal from './PlanillaFichajesModal.jsx'
 
@@ -373,6 +374,28 @@ export default function AdminPlanillaPanel() {
             >
               {importBusy ? 'Importando…' : 'Sustituir planilla por este CSV'}
             </button>
+          </div>
+          <div className="planilla-export-row">
+            <button
+              type="button"
+              className="secondary"
+              disabled={busy || importBusy}
+              onClick={async () => {
+                try {
+                  await downloadPlanillaHorarioXlsx(rows)
+                } catch (e) {
+                  setMsg({
+                    type: 'error',
+                    text: `No se pudo generar el Excel: ${e?.message ?? e}`,
+                  })
+                }
+              }}
+            >
+              Descargar Excel (.xlsx)
+            </button>
+            <span className="muted small">
+              Misma vista que la tabla (para abrir en Excel e imprimir).
+            </span>
           </div>
           <div className="table-wrap planilla-admin-wrap">
             <table className="rules-table planilla-admin-table">
