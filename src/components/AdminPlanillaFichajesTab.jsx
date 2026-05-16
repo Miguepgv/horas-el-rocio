@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import FichadoShiftRows from './FichadoShiftRows.jsx'
 import {
   eachEventDateISO,
   formatHoursMinutes,
@@ -9,15 +10,6 @@ import {
   weekdayShort,
   workedPaidHoursOverlappingDay,
 } from '../lib/payCompute.js'
-
-function fmtClock(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function fmtDateEs(isoYmd) {
   const d = parseLocalDate(isoYmd)
@@ -39,6 +31,10 @@ export default function AdminPlanillaFichajesTab({ rows, punchByEmail, onCorregi
 
   return (
     <div className="admin-fichajes-tab">
+      <p className="muted small admin-fichajes-hint">
+        La entrada aparece al picar; las horas y el importe del día se calculan al
+        cerrar con salida.
+      </p>
       {workers.length === 0 ? (
         <p className="muted">No hay filas con correo asignado.</p>
       ) : (
@@ -94,28 +90,7 @@ export default function AdminPlanillaFichajesTab({ rows, punchByEmail, onCorregi
                           </td>
                           <td>
                             {shifts.length > 0 ? (
-                              <div className="fichado-stack">
-                                {shifts.map((seg, i) => (
-                                  <div key={i} className="fichado-shift-row">
-                                    <span>
-                                      <span className="badge-in badge-fich-in">E</span>{' '}
-                                      <span className="time-strong">
-                                        {fmtClock(seg.inAt.toISOString())}
-                                      </span>
-                                    </span>
-                                    <span className="fichado-shift-mid muted">→</span>
-                                    <span>
-                                      <span className="badge-out badge-fich-out">S</span>{' '}
-                                      <span className="time-strong">
-                                        {fmtClock(seg.outAt.toISOString())}
-                                      </span>
-                                    </span>
-                                    <span className="fichado-shift-hours">
-                                      <strong>{formatHoursMinutes(seg.hoursOnDay)}</strong>
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                              <FichadoShiftRows shifts={shifts} />
                             ) : (
                               <span className="muted">—</span>
                             )}
@@ -134,6 +109,10 @@ export default function AdminPlanillaFichajesTab({ rows, punchByEmail, onCorregi
                                   <> (~{avgRate.toFixed(2)} €/h)</>
                                 ) : null}
                               </>
+                            ) : shifts.some((s) => s.open) ? (
+                              <span className="fichado-open-summary">
+                                Entrada picada · falta salida
+                              </span>
                             ) : (
                               '—'
                             )}

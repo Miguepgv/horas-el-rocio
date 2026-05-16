@@ -2,6 +2,7 @@ import {
   ROCIO_PLANILLA_DAY_KEYS as DAY_KEYS,
   ROCIO_PLANILLA_EXTRA_KEYS as EXTRA_KEYS,
 } from './rocioPlanillaKeys.js'
+import { planillaColumnHeader } from './planillaDayHeaders.js'
 
 const EURO_LABELS = {
   nomina_event_euros: 'Nómina €',
@@ -31,9 +32,7 @@ async function loadXlsx() {
  */
 export async function downloadPlanillaHorarioXlsx(rows) {
   const XLSX = await loadXlsx()
-  const dayHeaders = DAY_KEYS.map(
-    (_, idx) => `${Math.floor(idx / 2) + 1}${idx % 2 === 0 ? 'a' : 'b'}`,
-  )
+  const dayHeaders = DAY_KEYS.map((_, idx) => planillaColumnHeader(idx))
   const header = [
     'Nombre',
     'Correo',

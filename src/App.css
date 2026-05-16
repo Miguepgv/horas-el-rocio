@@ -836,14 +836,14 @@
 .planilla-admin-table {
   width: max-content;
   max-width: none;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   table-layout: auto;
 }
 
 .planilla-admin-table .planilla-th-nombre,
 .planilla-admin-table .planilla-td-nombre {
-  min-width: 8.75rem;
-  width: 9.25rem;
+  min-width: 7.25rem;
+  width: 7.75rem;
   position: sticky;
   left: 0;
   z-index: 2;
@@ -870,11 +870,21 @@
 
 .planilla-fichajes-row {
   display: grid;
-  grid-template-columns: minmax(0, 6.75rem) 1fr auto;
+  grid-template-columns: minmax(0, 5.5rem) 1fr auto;
   gap: 0.45rem 0.5rem;
   align-items: center;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
+}
+
+.planilla-fichajes-type-select {
+  min-width: 0;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.planilla-fichajes-nopay {
+  grid-column: 1 / -1;
 }
 
 .planilla-fichajes-type {
@@ -943,6 +953,25 @@
   line-height: 1.35;
 }
 
+.fichado-shift-row--open {
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent, #3b82f6) 8%, transparent);
+}
+
+.badge-fich-pending {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.admin-fichajes-hint {
+  margin: 0 0 1rem;
+}
+
+.fichado-open-summary {
+  font-style: italic;
+}
+
 .fichado-shift-mid {
   flex-shrink: 0;
 }
@@ -971,8 +1000,8 @@
 
 .planilla-admin-table .planilla-th-correo,
 .planilla-admin-table .planilla-td-correo {
-  min-width: 17rem;
-  width: 17.5rem;
+  min-width: 13.5rem;
+  width: 14rem;
 }
 
 .planilla-admin-table .planilla-th-euro,
@@ -1030,25 +1059,28 @@
 }
 
 .planilla-mini-th {
-  min-width: 3.1rem;
-  width: 3.25rem;
+  min-width: 2.65rem;
+  width: 2.75rem;
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   letter-spacing: -0.02em;
+  line-height: 1.15;
+  padding: 0.35rem 0.2rem;
+  white-space: normal;
 }
 
 .planilla-admin-table .planilla-td-slot {
   text-align: center;
   vertical-align: middle;
-  padding: 0.35rem 0.4rem;
+  padding: 0.2rem 0.25rem;
 }
 
 .planilla-admin-table .planilla-cell {
-  min-width: 5.85rem;
-  width: 5.85rem;
+  min-width: 4.35rem;
+  width: 4.35rem;
   max-width: none;
-  padding: 0.45rem 0.4rem;
-  font-size: 0.875rem;
+  padding: 0.28rem 0.25rem;
+  font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }

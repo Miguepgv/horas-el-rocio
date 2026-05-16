@@ -28,6 +28,7 @@ export default function PlanillaFichajesModal({
   onSaved,
 }) {
   const [times, setTimes] = useState({})
+  const [types, setTypes] = useState({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   const [newType, setNewType] = useState('in')
@@ -38,8 +39,13 @@ export default function PlanillaFichajesModal({
     /* eslint-disable react-hooks/set-state-in-effect -- sincronizar formulario al abrir */
     setMsg(null)
     const t = {}
-    for (const p of punches ?? []) t[p.id] = toDatetimeLocalValue(p.punched_at)
+    const ty = {}
+    for (const p of punches ?? []) {
+      t[p.id] = toDatetimeLocalValue(p.punched_at)
+      ty[p.id] = p.punch_type === 'out' ? 'out' : 'in'
+    }
     setTimes(t)
+    setTypes(ty)
     setNewType('in')
     setNewTime(toDatetimeLocalValue(new Date().toISOString()))
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -58,17 +64,19 @@ export default function PlanillaFichajesModal({
       setMsg({ type: 'error', text: 'Fecha u hora no válida.' })
       return
     }
+    const punchType = types[p.id] === 'out' ? 'out' : 'in'
     setBusy(true)
     setMsg(null)
     const { error } = await supabase
       .from('punches')
-      .update({ punched_at: iso })
+      .update({ punched_at: iso, punch_type: punchType })
       .eq('id', p.id)
     setBusy(false)
     if (error) {
       setMsg({ type: 'error', text: friendlySupabaseError(error) })
       return
     }
+    setMsg({ type: 'ok', text: 'Fichaje guardado.' })
     await onSaved()
   }
 
@@ -85,10 +93,10 @@ export default function PlanillaFichajesModal({
     await onSaved()
   }
 
-  async function addPunch() {
+  async function guardarNuevoFichaje() {
     const iso = fromDatetimeLocalValue(newTime)
     if (!iso) {
-      setMsg({ type: 'error', text: 'Indica fecha y hora válidas.' })
+      setMsg({ type: 'error', text: 'Indica fecha y hora válidas antes de guardar.' })
       return
     }
     setBusy(true)
@@ -111,16 +119,18 @@ export default function PlanillaFichajesModal({
       setMsg({ type: 'error', text: friendlySupabaseError(error) })
       return
     }
+    setMsg({ type: 'ok', text: 'Fichaje añadido y guardado.' })
+    setNewTime(toDatetimeLocalValue(new Date().toISOString()))
     await onSaved()
   }
 
   return (
     <div className="modal-root" role="dialog" aria-modal="true" aria-label="Fichajes reales">
-      <button type="button" className="modal-backdrop" onClick={onClose} aria-hidden />
+      <button type="button" className="modal-backdrop" onClick={() => !busy && onClose()} aria-hidden />
       <div className="modal-panel card planilla-fichajes-modal-panel">
         <div className="modal-head">
           <h2>Fichajes reales</h2>
-          <button type="button" className="secondary btn-close" onClick={onClose}>
+          <button type="button" className="secondary btn-close" onClick={onClose} disabled={busy}>
             Cerrar
           </button>
         </div>
@@ -133,6 +143,10 @@ export default function PlanillaFichajesModal({
             </>
           ) : null}
         </p>
+        <p className="muted small" style={{ marginTop: 0 }}>
+          Cambia entrada/salida o la hora y pulsa <strong>Guardar</strong> en cada fila. Los turnos que pasan
+          medianoche se cobran en el día de la entrada.
+        </p>
 
         <ul className="planilla-fichajes-list">
           {sorted.length === 0 ? (
@@ -140,12 +154,18 @@ export default function PlanillaFichajesModal({
           ) : (
             sorted.map((p) => (
               <li key={p.id} className="planilla-fichajes-row">
-                <span className="planilla-fichajes-type">
-                  {p.punch_type === 'in' ? 'Entrada' : 'Salida'}
-                  {p.no_pay ? (
-                    <span className="muted small"> (sin cobro)</span>
-                  ) : null}
-                </span>
+                <select
+                  className="table-input planilla-fichajes-type-select"
+                  value={types[p.id] ?? 'in'}
+                  disabled={busy}
+                  onChange={(e) =>
+                    setTypes((prev) => ({ ...prev, [p.id]: e.target.value }))
+                  }
+                  aria-label="Tipo de fichaje"
+                >
+                  <option value="in">Entrada</option>
+                  <option value="out">Salida</option>
+                </select>
                 <input
                   type="datetime-local"
                   className="table-input planilla-fichajes-dt"
@@ -158,7 +178,7 @@ export default function PlanillaFichajesModal({
                 <div className="planilla-fichajes-row-actions">
                   <button
                     type="button"
-                    className="secondary btn-xs"
+                    className="primary btn-xs"
                     disabled={busy}
                     onClick={() => savePunch(p)}
                   >
@@ -173,13 +193,19 @@ export default function PlanillaFichajesModal({
                     Borrar
                   </button>
                 </div>
+                {p.no_pay ? (
+                  <span className="muted small planilla-fichajes-nopay">Sin cobro</span>
+                ) : null}
               </li>
             ))
           )}
         </ul>
 
         <div className="planilla-fichajes-add card subpanel">
-          <p className="label-up">Añadir fichaje (olvidó picar)</p>
+          <p className="label-up">Añadir fichaje manual (olvidó picar)</p>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Elige día y hora y pulsa <strong>Guardar fichaje</strong> (no se guarda al cerrar fuera).
+          </p>
           <div className="planilla-fichajes-add-row">
             <select
               className="table-input"
@@ -197,8 +223,8 @@ export default function PlanillaFichajesModal({
               disabled={busy}
               onChange={(e) => setNewTime(e.target.value)}
             />
-            <button type="button" className="secondary" disabled={busy} onClick={addPunch}>
-              Añadir
+            <button type="button" className="primary" disabled={busy} onClick={guardarNuevoFichaje}>
+              {busy ? 'Guardando…' : 'Guardar fichaje'}
             </button>
           </div>
         </div>

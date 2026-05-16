@@ -67,35 +67,67 @@ export function paidInOutPairs(punches) {
   return pairs
 }
 
-export function paidShiftsOverlappingDay(punches, dayIso) {
-  const dayStart = parseLocalDate(dayIso)
-  const dayEnd = new Date(dayStart)
-  dayEnd.setDate(dayEnd.getDate() + 1)
+/** Día natural del fichaje de entrada (turnos que pasan medianoche cuentan en el día de entrada). */
+export function paidShiftStartDayIso(inAt) {
+  return formatDateLocalISO(inAt)
+}
+
+/**
+ * Turnos con entrada en `dayIso`. Incluye turnos abiertos (solo entrada, sin salida aún).
+ * Horas y € del resumen solo cuentan turnos cerrados (open === false).
+ */
+export function paidShiftsByStartDay(punches, dayIso) {
+  const list = punches
+    .filter((p) => !isNoPay(p))
+    .slice()
+    .sort((x, y) => new Date(x.punched_at) - new Date(y.punched_at))
   const segments = []
-  for (const [a, b] of paidInOutPairs(punches)) {
-    const s = Math.max(a.getTime(), dayStart.getTime())
-    const e = Math.min(b.getTime(), dayEnd.getTime())
-    if (s >= e) continue
+  let openIn = null
+
+  const pushOpenIfOnDay = () => {
+    if (!openIn || paidShiftStartDayIso(openIn) !== dayIso) return
     segments.push({
-      inAt: a,
-      outAt: b,
-      hoursOnDay: (e - s) / 3_600_000,
+      inAt: openIn,
+      outAt: null,
+      open: true,
+      hoursOnDay: 0,
     })
+    openIn = null
   }
+
+  for (const p of list) {
+    if (p.punch_type === 'in') {
+      if (openIn) pushOpenIfOnDay()
+      openIn = new Date(p.punched_at)
+    } else if (p.punch_type === 'out' && openIn) {
+      const inAt = openIn
+      openIn = null
+      if (paidShiftStartDayIso(inAt) !== dayIso) continue
+      const outAt = new Date(p.punched_at)
+      segments.push({
+        inAt,
+        outAt,
+        open: false,
+        hoursOnDay: Math.max(0, (outAt.getTime() - inAt.getTime()) / 3_600_000),
+      })
+    }
+  }
+  if (openIn) pushOpenIfOnDay()
   return segments
 }
 
+/** @deprecated Usar paidShiftsByStartDay (misma API; ya no parte por medianoche). */
+export function paidShiftsOverlappingDay(punches, dayIso) {
+  return paidShiftsByStartDay(punches, dayIso)
+}
+
+export function workedPaidHoursByStartDay(punches, dayIso) {
+  return paidShiftsByStartDay(punches, dayIso).reduce((s, seg) => s + seg.hoursOnDay, 0)
+}
+
+/** @deprecated Usar workedPaidHoursByStartDay */
 export function workedPaidHoursOverlappingDay(punches, dayIso) {
-  const dayStart = parseLocalDate(dayIso)
-  const dayEnd = new Date(dayStart)
-  dayEnd.setDate(dayEnd.getDate() + 1)
-  let ms = 0
-  for (const [a, b] of paidInOutPairs(punches)) {
-    const s = Math.max(a.getTime(), dayStart.getTime())
-    const e = Math.min(b.getTime(), dayEnd.getTime())
-    if (s < e) ms += e - s
-  }
-  return ms / 3_600_000
+  return workedPaidHoursByStartDay(punches, dayIso)
 }
 
 export function workedNoPayHoursOverlappingDay(punches, dayIso) {
@@ -142,17 +174,18 @@ export function workedHoursForDay(punches, dayIso) {
   return hours
 }
 
-export function paidEurosOverlappingDay(punches, dayIso) {
-  const dayStart = parseLocalDate(dayIso)
-  const dayEnd = new Date(dayStart)
-  dayEnd.setDate(dayEnd.getDate() + 1)
+export function paidEurosByStartDay(punches, dayIso) {
   let euros = 0
   for (const [a, b] of paidInOutPairs(punches)) {
-    const s = Math.max(a.getTime(), dayStart.getTime())
-    const e = Math.min(b.getTime(), dayEnd.getTime())
-    if (s < e) euros += eurosForIntervalMs(new Date(s), new Date(e))
+    if (paidShiftStartDayIso(a) !== dayIso) continue
+    euros += eurosForIntervalMs(a, b)
   }
   return euros
+}
+
+/** @deprecated Usar paidEurosByStartDay */
+export function paidEurosOverlappingDay(punches, dayIso) {
+  return paidEurosByStartDay(punches, dayIso)
 }
 
 const WD_SHORT = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -177,8 +210,8 @@ export function buildDailySummary(punches) {
   for (const iso of days) {
     const d = parseLocalDate(iso)
     const wd = weekdayMonSunFromDate(d)
-    const h = workedPaidHoursOverlappingDay(punches, iso)
-    const gross = paidEurosOverlappingDay(punches, iso)
+    const h = workedPaidHoursByStartDay(punches, iso)
+    const gross = paidEurosByStartDay(punches, iso)
     const rate = h > 0 ? gross / h : applicableHourlyRate(wd)
     totalHours += h
     totalGross += gross

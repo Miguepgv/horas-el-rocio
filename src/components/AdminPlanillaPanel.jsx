@@ -9,6 +9,7 @@ import {
 } from '../lib/rocioPlanillaKeys.js'
 import { parsePlanillaWideCsv } from '../lib/csvSchedule.js'
 import { downloadPlanillaHorarioXlsx } from '../lib/exportScheduleXlsx.js'
+import { planillaColumnHeader, planillaColumnTitle } from '../lib/planillaDayHeaders.js'
 import AdminPlanillaFichajesTab from './AdminPlanillaFichajesTab.jsx'
 import PlanillaFichajesModal from './PlanillaFichajesModal.jsx'
 
@@ -313,9 +314,8 @@ export default function AdminPlanillaPanel() {
   const headerDays = useMemo(
     () =>
       DAY_KEYS.map((k, idx) => (
-        <th key={k} className="planilla-mini-th" title={k}>
-          {Math.floor(idx / 2) + 1}
-          {idx % 2 === 0 ? 'a' : 'b'}
+        <th key={k} className="planilla-mini-th" title={planillaColumnTitle(idx)}>
+          {planillaColumnHeader(idx)}
         </th>
       )),
     [],

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo.jsx'
+import FichadoShiftRows from '../components/FichadoShiftRows.jsx'
 import ManageAdminsModal from '../components/ManageAdminsModal.jsx'
 import InstallAppHint from '../components/InstallAppHint.jsx'
 import { APP_SCREEN_TITLE } from '../lib/brand.js'
@@ -62,9 +63,10 @@ function formatFichadoPlainForExport(punches, iso) {
   const past = d < startDay
 
   if (shifts.length > 0) {
-    const lines = shifts.map(
-      (seg) =>
-        `Entrada ${fmtClock(seg.inAt.toISOString())} → Salida ${fmtClock(seg.outAt.toISOString())} (${formatHoursMinutes(seg.hoursOnDay)})`,
+    const lines = shifts.map((seg) =>
+      seg.open
+        ? `Entrada ${fmtClock(seg.inAt.toISOString())} (sin salida aún)`
+        : `Entrada ${fmtClock(seg.inAt.toISOString())} → Salida ${fmtClock(seg.outAt.toISOString())} (${formatHoursMinutes(seg.hoursOnDay)})`,
     )
     let footer = `Total día (cobro): ${formatHoursMinutes(hPaid)}`
     if (ePaid > 0) footer += ` · ${ePaid.toFixed(2)} €`
@@ -725,36 +727,24 @@ export default function InicioPage({ session, onSignOut }) {
                     const fichadoCell =
                       shifts.length > 0 ? (
                         <div className="fichado-stack">
-                          {shifts.map((seg, i) => (
-                            <div key={i} className="fichado-shift-row">
-                              <span>
-                                <span className="badge-in badge-fich-in">E</span>{' '}
-                                <span className="time-strong">
-                                  {fmtClock(seg.inAt.toISOString())}
-                                </span>
-                              </span>
-                              <span className="fichado-shift-mid muted">→</span>
-                              <span>
-                                <span className="badge-out badge-fich-out">S</span>{' '}
-                                <span className="time-strong">
-                                  {fmtClock(seg.outAt.toISOString())}
-                                </span>
-                              </span>
-                              <span className="fichado-shift-hours">
-                                <strong>{formatHoursMinutes(seg.hoursOnDay)}</strong>
-                              </span>
-                            </div>
-                          ))}
+                          <FichadoShiftRows shifts={shifts} />
                           <div className="fichado-day-footer muted small">
-                            Total día (cobro): <strong>{formatHoursMinutes(hPaid)}</strong>
-                            {ePaid > 0 ? (
+                            {hPaid > 0 ? (
                               <>
-                                {' '}
-                                · <strong>{ePaid.toFixed(2)} €</strong>
+                                Total día (cobro):{' '}
+                                <strong>{formatHoursMinutes(hPaid)}</strong>
+                                {ePaid > 0 ? (
+                                  <>
+                                    {' '}
+                                    · <strong>{ePaid.toFixed(2)} €</strong>
+                                  </>
+                                ) : null}
+                                {avgRate != null ? (
+                                  <> (~{avgRate.toFixed(2)} €/h med.)</>
+                                ) : null}
                               </>
-                            ) : null}
-                            {hPaid > 0 && avgRate != null ? (
-                              <> (~{avgRate.toFixed(2)} €/h med.)</>
+                            ) : shifts.some((s) => s.open) ? (
+                              <>Horas y € se calculan al picar salida</>
                             ) : null}
                           </div>
                           {hNp > 0 ? (
