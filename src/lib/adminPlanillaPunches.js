@@ -1,4 +1,5 @@
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
+import { collectPunchEmails } from './fichajesWorkerList.js'
 import { parseLocalDate } from './payCompute.js'
 import { deterministicUserIdFromEmail } from './insecureLogin.js'
 
@@ -41,13 +42,15 @@ export async function resolvePrimaryPunchUserId(email, eventWorkers) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {Array<{ correo?: string|null }>} planillaRows
  * @param {Array<{ email?: string|null, auth_user_id?: string|null }>} eventWorkers
+ * @param {Array<{ email?: string|null, auth_user_id?: string|null }>} loginRecords
  */
 export async function fetchPunchesGroupedByPlanillaEmail(
   supabase,
   planillaRows,
   eventWorkers,
+  loginRecords = [],
 ) {
-  const emails = [...new Set(planillaRows.map((r) => normEmail(r.correo)).filter(Boolean))]
+  const emails = collectPunchEmails(planillaRows, eventWorkers, loginRecords)
   /** @type {Record<string, Array<{ id: string, user_id: string, punch_type: string, punched_at: string, no_pay: boolean }>>} */
   const byEmail = Object.fromEntries(emails.map((e) => [e, []]))
   if (!emails.length || !supabase) return byEmail
@@ -62,6 +65,12 @@ export async function fetchPunchesGroupedByPlanillaEmail(
     const em = normEmail(w.email)
     if (!em || !w.auth_user_id || !emails.includes(em)) continue
     uidToEmail.set(w.auth_user_id, em)
+  }
+
+  for (const rec of loginRecords ?? []) {
+    const em = normEmail(rec.email)
+    if (!em || !rec.auth_user_id || !emails.includes(em)) continue
+    uidToEmail.set(rec.auth_user_id, em)
   }
 
   const ids = [...uidToEmail.keys()]

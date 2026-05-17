@@ -56,6 +56,7 @@ export default function AdminPlanillaPanel() {
   const [msg, setMsg] = useState(null)
   const [emailOptions, setEmailOptions] = useState([])
   const [magicLoginEmails, setMagicLoginEmails] = useState([])
+  const [loginEmailRecords, setLoginEmailRecords] = useState([])
   const [punchByEmail, setPunchByEmail] = useState({})
   const [eventWorkersCache, setEventWorkersCache] = useState([])
   const [punchModal, setPunchModal] = useState(null)
@@ -97,8 +98,11 @@ export default function AdminPlanillaPanel() {
         if (e) emails.add(e)
       }
     }
-    const log = await supabase.from('app_login_emails').select('email')
+    const log = await supabase
+      .from('app_login_emails')
+      .select('email,auth_user_id')
     if (!log.error) {
+      setLoginEmailRecords(log.data ?? [])
       for (const r of log.data ?? []) {
         const e = String(r.email ?? '')
           .trim()
@@ -108,28 +112,30 @@ export default function AdminPlanillaPanel() {
           emails.add(e)
         }
       }
-    } else if (!isMissingTableError(log.error)) {
-      console.warn('app_login_emails:', log.error?.message ?? log.error)
+    } else {
+      setLoginEmailRecords([])
+      if (!isMissingTableError(log.error)) {
+        console.warn('app_login_emails:', log.error?.message ?? log.error)
+      }
     }
     const magicSorted = [...magic].sort()
     setMagicLoginEmails(magicSorted)
     setEmailOptions([...emails].sort())
     setEventWorkersCache(ew.error ? [] : ew.data ?? [])
     let punchMap = {}
-    if (!ew.error) {
-      try {
-        punchMap = await fetchPunchesGroupedByPlanillaEmail(
-          supabase,
-          raw,
-          ew.data ?? [],
-        )
-      } catch (e) {
-        console.warn('fichajes planilla:', e)
-        setMsg({
-          type: 'error',
-          text: `No se pudieron cargar los fichajes: ${friendlySupabaseError(e)}`,
-        })
-      }
+    try {
+      punchMap = await fetchPunchesGroupedByPlanillaEmail(
+        supabase,
+        raw,
+        ew.error ? [] : (ew.data ?? []),
+        log.error ? [] : (log.data ?? []),
+      )
+    } catch (e) {
+      console.warn('fichajes planilla:', e)
+      setMsg({
+        type: 'error',
+        text: `No se pudieron cargar los fichajes: ${friendlySupabaseError(e)}`,
+      })
     }
     setPunchByEmail(punchMap)
 
@@ -351,6 +357,8 @@ export default function AdminPlanillaPanel() {
       ) : adminSection === 'fichajes' ? (
         <AdminPlanillaFichajesTab
           rows={rows}
+          eventWorkers={eventWorkersCache}
+          loginEmailRecords={loginEmailRecords}
           punchByEmail={punchByEmail}
           onCorregir={(email, nombre) => setPunchModal({ email, nombre })}
         />

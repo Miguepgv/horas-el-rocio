@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 import FichadoShiftRows from './FichadoShiftRows.jsx'
 import {
+  buildFichajesWorkerEntries,
+  punchesForWorkerEntry,
+} from '../lib/fichajesWorkerList.js'
+import {
   eachEventDateISO,
   formatHoursMinutes,
   paidEurosOverlappingDay,
@@ -20,30 +24,54 @@ function fmtDateEs(isoYmd) {
   })
 }
 
-export default function AdminPlanillaFichajesTab({ rows, punchByEmail, onCorregir }) {
+export default function AdminPlanillaFichajesTab({
+  rows,
+  eventWorkers,
+  loginEmailRecords,
+  punchByEmail,
+  onCorregir,
+}) {
   const dayList = useMemo(() => [...eachEventDateISO()].sort(), [])
 
   const workers = useMemo(
     () =>
-      rows.filter((r) => String(r.correo ?? '').trim()),
+      buildFichajesWorkerEntries(
+        rows,
+        eventWorkers,
+        loginEmailRecords,
+        punchByEmail,
+      ),
+    [rows, eventWorkers, loginEmailRecords, punchByEmail],
+  )
+
+  const planillaSinCorreo = useMemo(
+    () =>
+      (rows ?? []).filter(
+        (r) => String(r.nombre ?? '').trim() && !String(r.correo ?? '').trim(),
+      ).length,
     [rows],
   )
 
   return (
     <div className="admin-fichajes-tab">
       <p className="muted small admin-fichajes-hint">
-        La entrada aparece al picar; las horas y el importe del día se calculan al
-        cerrar con salida.
+        Misma plantilla que «Celdas horario». La entrada aparece al picar; horas y €
+        al cerrar con salida. Si falta correo en planilla, se intenta enlazar por
+        nombre con la plantilla del evento.
       </p>
+      {planillaSinCorreo > 0 ? (
+        <p className="muted small admin-fichajes-hint">
+          Hay {planillaSinCorreo} fila(s) sin correo en planilla: pon el mismo correo
+          con el que entran a la app y pulsa <strong>Guardar</strong> en esa fila.
+        </p>
+      ) : null}
       {workers.length === 0 ? (
-        <p className="muted">No hay filas con correo asignado.</p>
+        <p className="muted">No hay filas en la planilla todavía.</p>
       ) : (
-        workers.map((row) => {
-          const em = String(row.correo ?? '')
-            .trim()
-            .toLowerCase()
-          const nombre = String(row.nombre ?? '').trim() || em
-          const punches = punchByEmail[em] ?? []
+        workers.map((worker) => {
+          const em = worker.correo
+          const nombre = worker.nombre
+          const punches = punchesForWorkerEntry(worker, punchByEmail)
           const totalHPaid = dayList.reduce(
             (s, iso) => s + workedPaidHoursOverlappingDay(punches, iso),
             0,
@@ -53,14 +81,44 @@ export default function AdminPlanillaFichajesTab({ rows, punchByEmail, onCorregi
             0,
           )
           return (
-            <div key={row.id ?? em} className="admin-fichajes-worker-block card subpanel">
+            <div
+              key={worker.id ?? em}
+              className="admin-fichajes-worker-block card subpanel"
+            >
               <div className="admin-fichajes-worker-head">
                 <h3 className="admin-fichajes-worker-title">{nombre}</h3>
-                <code className="muted small">{em}</code>
+                {em ? (
+                  <code className="muted small">{em}</code>
+                ) : (
+                  <span className="muted small">Sin correo en planilla</span>
+                )}
+                {worker.needsCorreo ? (
+                  <span
+                    className="badge-fichajes-solo-app muted small"
+                    title="Asigna y guarda el correo en Celdas horario para enlazar fichajes."
+                  >
+                    Falta correo · no enlaza fichajes
+                  </span>
+                ) : !worker.inPlanilla ? (
+                  <span
+                    className="badge-fichajes-solo-app muted small"
+                    title="Cuenta o plantilla sin fila en planilla con este correo."
+                  >
+                    Solo app / plantilla
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   className="secondary btn-xs"
-                  onClick={() => onCorregir(em, nombre)}
+                  disabled={!worker.punchLookupEmail}
+                  title={
+                    worker.punchLookupEmail
+                      ? 'Editar fichajes de este trabajador'
+                      : 'Asigna y guarda un correo en planilla para poder corregir fichajes'
+                  }
+                  onClick={() =>
+                    onCorregir(worker.punchLookupEmail ?? '', nombre)
+                  }
                 >
                   Corregir fichajes
                 </button>
