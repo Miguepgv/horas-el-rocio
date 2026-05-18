@@ -10,7 +10,6 @@ import { resolveAdminAccess } from '../lib/admin.js'
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 import {
   buildDailySummary,
-  eachEventDateISO,
   fixedWorkerExtras,
   formatDateLocalISO,
   formatHoursMinutes,
@@ -27,7 +26,10 @@ import {
   friendlySupabaseError,
   isMissingTableError,
 } from '../lib/dbErrors.js'
-import { planillaRowToSlots } from '../lib/rocioPlanillaSchedule.js'
+import {
+  eachPlanillaGridDateISO,
+  planillaRowToSlots,
+} from '../lib/rocioPlanillaSchedule.js'
 import { downloadMiHorarioXlsx } from '../lib/exportScheduleXlsx.js'
 import { escapeForILikeExact } from '../lib/emailMatch.js'
 import { sessionIsInsecure } from '../lib/insecureLogin.js'
@@ -389,10 +391,7 @@ export default function InicioPage({ session, onSignOut }) {
     await reloadData()
   }
 
-  const scheduleTableDays = useMemo(
-    () => [...eachEventDateISO()].sort(),
-    [],
-  )
+  const scheduleTableDays = useMemo(() => [...eachPlanillaGridDateISO()], [])
 
   const horarioXlsxRows = useMemo(() => {
     return scheduleTableDays.map((iso) => {
@@ -663,11 +662,11 @@ export default function InicioPage({ session, onSignOut }) {
                 Mismo horario que la tabla (abrir en Excel e imprimir).
               </span>
             </div>
-            <div className="table-wrap">
-              <table className="rules-table schedule-table">
+            <div className="table-wrap horario-scroll-wrap">
+              <table className="rules-table schedule-table horario-sticky-table">
                 <thead>
                   <tr>
-                    <th>Día</th>
+                    <th className="horario-sticky-day">Día</th>
                     <th>Previsto</th>
                     <th>Fichado</th>
                   </tr>
@@ -774,7 +773,7 @@ export default function InicioPage({ session, onSignOut }) {
                       ) : null
                     return (
                       <tr key={iso}>
-                        <td>
+                        <td className="horario-sticky-day">
                           <strong>{weekdayShort(wd)}</strong>{' '}
                           <span className="muted small">{fmtDateEs(iso)}</span>
                         </td>

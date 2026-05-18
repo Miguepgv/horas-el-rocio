@@ -851,8 +851,20 @@
   box-shadow: 3px 0 10px -4px color-mix(in srgb, var(--text) 14%, transparent);
 }
 
+.planilla-admin-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border);
+}
+
 .planilla-admin-table thead .planilla-th-nombre {
-  z-index: 4;
+  z-index: 5;
+}
+
+.planilla-admin-table thead .planilla-mini-th {
+  z-index: 3;
 }
 
 .planilla-fichajes-modal-panel {
@@ -914,6 +926,9 @@
 
 .admin-fichajes-tab {
   margin-top: 0.5rem;
+  max-height: min(78vh, calc(100dvh - 10rem));
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .admin-fichajes-worker-block {
@@ -926,6 +941,16 @@
   align-items: center;
   gap: 0.5rem 0.75rem;
   margin-bottom: 0.65rem;
+}
+
+.admin-fichajes-worker-block .admin-fichajes-worker-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.35rem 0 0.5rem;
+  margin-bottom: 0.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .admin-fichajes-worker-title {
@@ -1074,6 +1099,66 @@
   line-height: 1.15;
   padding: 0.35rem 0.2rem;
   white-space: normal;
+}
+
+/* Mi horario: día fijo al desplazar */
+.horario-scroll-wrap {
+  overflow: auto;
+  max-height: min(70vh, calc(100dvh - 12rem));
+  margin-top: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  scrollbar-gutter: stable;
+}
+
+.horario-sticky-table .horario-sticky-day {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 6.5rem;
+  background: var(--surface);
+  box-shadow: 3px 0 10px -4px color-mix(in srgb, var(--text) 14%, transparent);
+}
+
+.horario-sticky-table thead .horario-sticky-day {
+  z-index: 4;
+  top: 0;
+}
+
+.horario-sticky-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: color-mix(in srgb, var(--border) 35%, var(--surface));
+}
+
+/* Turnos picados (admin): tabla por trabajador con scroll */
+.admin-fichajes-mini-wrap {
+  overflow: auto;
+  max-height: min(52vh, 28rem);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.admin-fichajes-mini-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--border) 35%, var(--surface));
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.admin-fichajes-mini-table .fichajes-sticky-day {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 5.5rem;
+  background: var(--surface);
+  box-shadow: 3px 0 8px -4px color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.admin-fichajes-mini-table thead .fichajes-sticky-day {
+  z-index: 3;
 }
 
 .planilla-admin-table .planilla-td-slot {

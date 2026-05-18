@@ -1,5 +1,6 @@
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 import { eurosForIntervalMs } from './elRocioRates.js'
+import { eachPlanillaGridDateISO } from './rocioPlanillaSchedule.js'
 
 export function weekdayMonSunFromDate(d) {
   const j = d.getDay()
@@ -40,6 +41,20 @@ export function eachEventDateISO() {
     out.push(formatDateLocalISO(new Date(d)))
   }
   return out
+}
+
+/** Días de cobro / fichajes alineados con la planilla (d01…d11) + días con picadas fuera de la rejilla. */
+export function eachCobroDisplayDateISO(punches) {
+  const dates = [...eachPlanillaGridDateISO()]
+  const seen = new Set(dates)
+  for (const p of punches ?? []) {
+    const iso = formatDateLocalISO(new Date(p.punched_at))
+    if (!seen.has(iso)) {
+      seen.add(iso)
+      dates.push(iso)
+    }
+  }
+  return dates.sort()
 }
 
 function punchesForCalendarDay(punches, dayIso) {
@@ -203,7 +218,7 @@ export function formatHoursMinutes(h) {
 }
 
 export function buildDailySummary(punches) {
-  const days = [...eachEventDateISO()].sort()
+  const days = eachCobroDisplayDateISO(punches)
   const rows = []
   let totalHours = 0
   let totalGross = 0

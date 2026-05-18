@@ -4,8 +4,8 @@ import {
   buildFichajesWorkerEntries,
   punchesForWorkerEntry,
 } from '../lib/fichajesWorkerList.js'
+import { eachPlanillaGridDateISO } from '../lib/rocioPlanillaSchedule.js'
 import {
-  eachEventDateISO,
   formatHoursMinutes,
   paidEurosOverlappingDay,
   paidShiftsOverlappingDay,
@@ -31,7 +31,7 @@ export default function AdminPlanillaFichajesTab({
   punchByEmail,
   onCorregir,
 }) {
-  const dayList = useMemo(() => [...eachEventDateISO()].sort(), [])
+  const dayList = useMemo(() => [...eachPlanillaGridDateISO()], [])
 
   const workers = useMemo(
     () =>
@@ -123,11 +123,11 @@ export default function AdminPlanillaFichajesTab({
                   Corregir fichajes
                 </button>
               </div>
-              <div className="table-wrap">
+              <div className="table-wrap admin-fichajes-mini-wrap">
                 <table className="rules-table schedule-table admin-fichajes-mini-table">
                   <thead>
                     <tr>
-                      <th>Día</th>
+                      <th className="fichajes-sticky-day">Día</th>
                       <th>Turnos picados (cobro)</th>
                       <th>Resumen día</th>
                     </tr>
@@ -142,7 +142,7 @@ export default function AdminPlanillaFichajesTab({
                       const avgRate = hPaid > 0 ? ePaid / hPaid : null
                       return (
                         <tr key={iso}>
-                          <td>
+                          <td className="fichajes-sticky-day">
                             <strong>{weekdayShort(wd)}</strong>{' '}
                             <span className="muted small">{fmtDateEs(iso)}</span>
                           </td>

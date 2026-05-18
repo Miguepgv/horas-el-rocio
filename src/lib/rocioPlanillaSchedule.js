@@ -1,4 +1,23 @@
+/** Primer día de la rejilla planilla (d01 = este día). Debe coincidir con las columnas d01_a…d11_b. */
 export const ROCIO_PLANILLA_GRID_FIRST_DAY = '2026-05-16'
+
+export const ROCIO_PLANILLA_GRID_DAY_COUNT = 11
+
+/** Fechas ISO de cada columna día (d01…d11), alineadas con `planillaRowToSlots`. */
+export function eachPlanillaGridDateISO(
+  firstDayIso = ROCIO_PLANILLA_GRID_FIRST_DAY,
+  dayCount = ROCIO_PLANILLA_GRID_DAY_COUNT,
+) {
+  const out = []
+  for (let p = 0; p < dayCount; p++) {
+    out.push(addDays(firstDayIso, p))
+  }
+  return out
+}
+
+export function planillaGridDateForDayIndex(dayIndex) {
+  return eachPlanillaGridDateISO()[dayIndex] ?? null
+}
 
 function sanitizeRaw(s) {
   return String(s ?? '')
