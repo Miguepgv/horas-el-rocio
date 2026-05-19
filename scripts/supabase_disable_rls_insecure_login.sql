@@ -11,6 +11,7 @@ ALTER TABLE IF EXISTS public.rocio_horario_planilla DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.horario_avisos DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.app_admins DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.app_login_emails DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.rocio_lista_espera DISABLE ROW LEVEL SECURITY;
 
 -- Permisos para la clave anónima (sin sesión Supabase Auth)
 GRANT USAGE ON SCHEMA public TO anon;
@@ -22,6 +23,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.rocio_horario_planilla TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.horario_avisos TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.app_admins TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.app_login_emails TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.rocio_lista_espera TO anon;
 
 -- Login solo-correo: la app guarda fichajes con un UUID sintético por correo, que NO existe en auth.users.
 -- Sin esto, INSERT en punches falla con: violates foreign key constraint "punches_user_id_fkey".

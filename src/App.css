@@ -1519,3 +1519,149 @@ a.install-app-modal-install-link {
   margin-top: 0;
 }
 
+.admin-page-tabs {
+  margin: 0 0 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+}
+
+.admin-page-tabs .tab {
+  flex: 1;
+  padding: 0.55rem 0.5rem;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  background: transparent !important;
+  color: var(--muted);
+  font-weight: 650;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 0;
+}
+
+.admin-page-tabs .tab.active {
+  color: var(--text-h);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+  margin-bottom: -1px;
+  background: var(--surface) !important;
+}
+
+.lista-espera-hint {
+  margin: 0 0 1rem;
+}
+
+.lista-espera-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.lista-espera-add-form label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0.35rem 0 0;
+}
+
+.lista-espera-add-form label:first-of-type {
+  margin-top: 0;
+}
+
+.lista-espera-add-form #le-personas {
+  max-width: 6rem;
+}
+
+.lista-espera-add-btn {
+  margin-top: 0.5rem;
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+.lista-espera-summary {
+  margin: 0 0 0.75rem;
+}
+
+.lista-espera-queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lista-espera-item {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  gap: 0.5rem 0.65rem;
+  align-items: start;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--border) 18%, transparent);
+}
+
+.lista-espera-pos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  font-weight: 750;
+  font-size: 0.95rem;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text-h);
+}
+
+.lista-espera-body {
+  min-width: 0;
+}
+
+.lista-espera-nombre {
+  display: block;
+  font-size: 1.05rem;
+  margin-bottom: 0.2rem;
+}
+
+.lista-espera-meta {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.lista-espera-meta a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.lista-espera-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.lista-espera-seat-btn {
+  min-height: 2.35rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-weight: 700;
+}
+
+.lista-espera-edit-fields {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lista-espera-personas-input {
+  max-width: 6rem;
+}
+
+.lista-espera-edit-fields .lista-espera-actions {
+  margin-top: 0;
+}
+
