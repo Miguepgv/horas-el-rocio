@@ -6,11 +6,21 @@ import {
   emptyRocioPlanillaPayload,
   ROCIO_PLANILLA_DAY_KEYS as DAY_KEYS,
   ROCIO_PLANILLA_EXTRA_KEYS as EXTRA_KEYS,
+  ROCIO_PLANILLA_EXTRA_KEYS_UI as EXTRA_KEYS_UI,
 } from '../lib/rocioPlanillaKeys.js'
 import { parsePlanillaWideCsv } from '../lib/csvSchedule.js'
 import { downloadPlanillaHorarioXlsx } from '../lib/exportScheduleXlsx.js'
+import {
+  partitionEventDays,
+  planillaDayKeysForIndices,
+  slotIndexForPlanillaDayKey,
+  todayIsoLocal,
+  visiblePlanillaDayIndices,
+} from '../lib/feriaDayView.js'
+import { eachPlanillaGridDateISO } from '../lib/rocioPlanillaSchedule.js'
 import { planillaColumnHeader, planillaColumnTitle } from '../lib/planillaDayHeaders.js'
 import AdminPlanillaFichajesTab from './AdminPlanillaFichajesTab.jsx'
+import DayViewToolbar from './DayViewToolbar.jsx'
 import PlanillaFichajesModal from './PlanillaFichajesModal.jsx'
 
 function emptyRow() {
@@ -61,6 +71,22 @@ export default function AdminPlanillaPanel() {
   const [eventWorkersCache, setEventWorkersCache] = useState([])
   const [punchModal, setPunchModal] = useState(null)
   const [adminSection, setAdminSection] = useState('celdas')
+  const [showPastPlanillaDays, setShowPastPlanillaDays] = useState(false)
+  const [showFuturePlanillaDays, setShowFuturePlanillaDays] = useState(false)
+  const todayIso = todayIsoLocal()
+  const planillaGridDays = useMemo(() => [...eachPlanillaGridDateISO()], [])
+  const { past: pastPlanillaDays, future: futurePlanillaDays } = useMemo(
+    () => partitionEventDays(planillaGridDays, todayIso),
+    [planillaGridDays, todayIso],
+  )
+  const visiblePlanillaDayKeys = useMemo(() => {
+    const indices = visiblePlanillaDayIndices(planillaGridDays, {
+      showPast: showPastPlanillaDays,
+      showFuture: showFuturePlanillaDays,
+      todayIso,
+    })
+    return planillaDayKeysForIndices(indices)
+  }, [planillaGridDays, showPastPlanillaDays, showFuturePlanillaDays, todayIso])
   const [importCsv, setImportCsv] = useState('')
   const [importBusy, setImportBusy] = useState(false)
 
@@ -319,12 +345,15 @@ export default function AdminPlanillaPanel() {
 
   const headerDays = useMemo(
     () =>
-      DAY_KEYS.map((k, idx) => (
-        <th key={k} className="planilla-mini-th" title={planillaColumnTitle(idx)}>
-          {planillaColumnHeader(idx)}
-        </th>
-      )),
-    [],
+      visiblePlanillaDayKeys.map((k) => {
+        const idx = slotIndexForPlanillaDayKey(k)
+        return (
+          <th key={k} className="planilla-mini-th" title={planillaColumnTitle(idx)}>
+            {planillaColumnHeader(idx)}
+          </th>
+        )
+      }),
+    [visiblePlanillaDayKeys],
   )
 
   return (
@@ -383,14 +412,30 @@ export default function AdminPlanillaPanel() {
               {importBusy ? 'Importando…' : 'Sustituir planilla por este CSV'}
             </button>
           </div>
-          <div className="planilla-export-row">
+          <DayViewToolbar
+            reportDate={todayIso}
+            onReportDateChange={() => {}}
+            minDate={planillaGridDays[0] ?? todayIso}
+            maxDate={todayIso}
+            showPastDays={showPastPlanillaDays}
+            onTogglePast={() => setShowPastPlanillaDays((v) => !v)}
+            pastCount={pastPlanillaDays.length}
+            showFutureDays={showFuturePlanillaDays}
+            onToggleFuture={() => setShowFuturePlanillaDays((v) => !v)}
+            futureCount={futurePlanillaDays.length}
+            onDownloadDaily={() => {}}
+            showReportDownload={false}
+            showWeekDownload={false}
+          >
             <button
               type="button"
               className="secondary"
               disabled={busy || importBusy}
               onClick={async () => {
                 try {
-                  await downloadPlanillaHorarioXlsx(rows)
+                  await downloadPlanillaHorarioXlsx(rows, {
+                    dayKeys: visiblePlanillaDayKeys,
+                  })
                 } catch (e) {
                   setMsg({
                     type: 'error',
@@ -399,12 +444,12 @@ export default function AdminPlanillaPanel() {
                 }
               }}
             >
-              Descargar Excel (.xlsx)
+              Excel (días visibles)
             </button>
-            <span className="muted small">
-              Misma vista que la tabla (para abrir en Excel e imprimir).
-            </span>
-          </div>
+          </DayViewToolbar>
+          {visiblePlanillaDayKeys.length === 0 ? (
+            <p className="muted small">Hoy no está en el calendario de la planilla.</p>
+          ) : null}
           <div className="table-wrap planilla-admin-wrap">
             <table className="rules-table planilla-admin-table">
               <thead>
@@ -414,8 +459,6 @@ export default function AdminPlanillaPanel() {
                   <th className="planilla-th-euro" title="€ que ya van por nómina del evento (se restan del bruto horas)">
                     Nómina €
                   </th>
-                  <th className="planilla-th-euro">Gasoil €</th>
-                  <th className="planilla-th-euro">Parking €</th>
                   {headerDays}
                   <th className="planilla-th-actions" />
                 </tr>
@@ -484,7 +527,7 @@ export default function AdminPlanillaPanel() {
                         />
                       </div>
                     </td>
-                    {EXTRA_KEYS.map((ek) => (
+                    {EXTRA_KEYS_UI.map((ek) => (
                       <td key={ek} className="planilla-td-euro">
                         <input
                           className="table-input planilla-euro-input"
@@ -503,7 +546,7 @@ export default function AdminPlanillaPanel() {
                         />
                       </td>
                     ))}
-                    {DAY_KEYS.map((k) => (
+                    {visiblePlanillaDayKeys.map((k) => (
                       <td key={k} className="planilla-td-slot">
                         <input
                           className="table-input planilla-cell"

@@ -1,7 +1,8 @@
 import {
   ROCIO_PLANILLA_DAY_KEYS as DAY_KEYS,
-  ROCIO_PLANILLA_EXTRA_KEYS as EXTRA_KEYS,
+  ROCIO_PLANILLA_EXTRA_KEYS_UI as EXTRA_KEYS_UI,
 } from './rocioPlanillaKeys.js'
+import { slotIndexForPlanillaDayKey } from './feriaDayView.js'
 import { planillaColumnHeader } from './planillaDayHeaders.js'
 
 const EURO_LABELS = {
@@ -30,24 +31,27 @@ async function loadXlsx() {
  * Planilla ancha tal como en administración (nombre, correo, €, celdas d01_a…d11_b).
  * @param {Array<Record<string, unknown>>} rows
  */
-export async function downloadPlanillaHorarioXlsx(rows) {
+export async function downloadPlanillaHorarioXlsx(rows, opts = {}) {
   const XLSX = await loadXlsx()
-  const dayHeaders = DAY_KEYS.map((_, idx) => planillaColumnHeader(idx))
+  const dayKeys = opts.dayKeys?.length ? opts.dayKeys : DAY_KEYS
+  const dayHeaders = dayKeys.map((k) =>
+    planillaColumnHeader(slotIndexForPlanillaDayKey(k)),
+  )
   const header = [
     'Nombre',
     'Correo',
-    ...EXTRA_KEYS.map((k) => EURO_LABELS[k] ?? k),
+    ...EXTRA_KEYS_UI.map((k) => EURO_LABELS[k] ?? k),
     ...dayHeaders,
   ]
   const body = (rows ?? []).map((r) => [
     String(r.nombre ?? '').trim(),
     String(r.correo ?? '').trim(),
-    ...EXTRA_KEYS.map((k) => {
+    ...EXTRA_KEYS_UI.map((k) => {
       const v = r[k]
       if (v == null || v === '') return ''
       return String(v)
     }),
-    ...DAY_KEYS.map((k) => String(r[k] ?? '')),
+    ...dayKeys.map((k) => String(r[k] ?? '')),
   ])
   const aoa = [header, ...body]
   const ws = XLSX.utils.aoa_to_sheet(aoa)

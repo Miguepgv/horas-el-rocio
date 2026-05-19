@@ -57,11 +57,57 @@ export function eachCobroDisplayDateISO(punches) {
   return dates.sort()
 }
 
-function punchesForCalendarDay(punches, dayIso) {
+export function punchesForCalendarDay(punches, dayIso) {
   return punches.filter((p) => {
     const t = new Date(p.punched_at)
     return formatDateLocalISO(t) === dayIso
   })
+}
+
+/** Turnos para mostrar: por día de entrada y, si no hay, fichajes sueltos ese día natural. */
+export function displayShiftsForDay(punches, dayIso) {
+  const byStart = paidShiftsByStartDay(punches, dayIso)
+  if (byStart.length) return byStart
+
+  const dayPunches = punchesForCalendarDay(punches, dayIso)
+    .filter((p) => !isNoPay(p))
+    .slice()
+    .sort((x, y) => new Date(x.punched_at) - new Date(y.punched_at))
+  if (!dayPunches.length) return []
+
+  const segments = []
+  let openIn = null
+  for (const p of dayPunches) {
+    if (p.punch_type === 'in') {
+      if (openIn) {
+        segments.push({
+          inAt: openIn,
+          outAt: null,
+          open: true,
+          hoursOnDay: 0,
+        })
+      }
+      openIn = new Date(p.punched_at)
+    } else if (p.punch_type === 'out' && openIn) {
+      const outAt = new Date(p.punched_at)
+      segments.push({
+        inAt: openIn,
+        outAt,
+        open: false,
+        hoursOnDay: Math.max(0, (outAt - openIn) / 3_600_000),
+      })
+      openIn = null
+    }
+  }
+  if (openIn) {
+    segments.push({
+      inAt: openIn,
+      outAt: null,
+      open: true,
+      hoursOnDay: 0,
+    })
+  }
+  return segments
 }
 
 export function paidInOutPairs(punches) {

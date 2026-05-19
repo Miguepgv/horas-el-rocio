@@ -1000,6 +1000,85 @@
   font-style: italic;
 }
 
+.day-view-toolbar {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.day-view-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  align-items: flex-end;
+}
+
+.day-view-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.day-view-date-input {
+  min-width: 10.5rem;
+}
+
+.day-view-toggle-past {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.day-view-toolbar-hint {
+  margin: 0.5rem 0 0;
+}
+
+.day-view-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.5rem;
+}
+
+.worker-horario-toolbar {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.worker-week-hint {
+  margin: 0 0 0.65rem;
+}
+
+.fichajes-row-future td {
+  opacity: 0.88;
+  background: color-mix(in srgb, var(--border) 20%, var(--surface));
+}
+
+.badge-today {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 650;
+  background: color-mix(in srgb, var(--accent, #b45309) 18%, transparent);
+  color: var(--text);
+}
+
+.fichajes-row-today td,
+.horario-row-today td {
+  background: color-mix(in srgb, var(--accent, #b45309) 6%, var(--surface));
+}
+
+.fichajes-row-past td,
+.horario-row-past td {
+  opacity: 0.92;
+}
+
+.fichajes-today-total {
+  margin-left: auto;
+}
+
 .fichado-open-summary {
   font-style: italic;
 }

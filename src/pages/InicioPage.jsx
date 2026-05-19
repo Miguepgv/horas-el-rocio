@@ -15,7 +15,9 @@ import {
   formatHoursMinutes,
   parseLocalDate,
   paidEurosOverlappingDay,
+  displayShiftsForDay,
   paidShiftsOverlappingDay,
+  punchesForCalendarDay,
   weekdayMonSunFromDate,
   weekdayShort,
   workedHoursForDay,
@@ -31,8 +33,18 @@ import {
   planillaRowToSlots,
 } from '../lib/rocioPlanillaSchedule.js'
 import { downloadMiHorarioXlsx } from '../lib/exportScheduleXlsx.js'
+import {
+  buildDailyReportRows,
+  downloadDailyShiftsReportXlsx,
+} from '../lib/exportDailyShiftsXlsx.js'
+import {
+  isTodayIso,
+  todayIsoLocal,
+  visibleWorkerWeekDays,
+} from '../lib/feriaDayView.js'
 import { escapeForILikeExact } from '../lib/emailMatch.js'
 import { sessionIsInsecure } from '../lib/insecureLogin.js'
+import { fetchWorkerPunchesForSession } from '../lib/workerPunches.js'
 
 function fmtClock(iso) {
   if (!iso) return '—'
@@ -53,7 +65,7 @@ function fmtDateEs(isoYmd) {
 }
 
 function formatFichadoPlainForExport(punches, iso) {
-  const shifts = paidShiftsOverlappingDay(punches, iso)
+  const shifts = displayShiftsForDay(punches, iso)
   const hPaid = workedPaidHoursOverlappingDay(punches, iso)
   const hNp = workedNoPayHoursOverlappingDay(punches, iso)
   const ePaid = paidEurosOverlappingDay(punches, iso)
@@ -107,6 +119,9 @@ export default function InicioPage({ session, onSignOut }) {
   const [scheduleSlots, setScheduleSlots] = useState([])
   const [eventWorker, setEventWorker] = useState(null)
   const [tab, setTab] = useState('horario')
+  const [reportDate, setReportDate] = useState(() => todayIsoLocal())
+  const [dailyExportBusy, setDailyExportBusy] = useState(false)
+  const todayIso = todayIsoLocal()
   const [punchMsg, setPunchMsg] = useState(null)
   const [loadingData, setLoadingData] = useState(true)
   const [horarioBanner, setHorarioBanner] = useState(null)
@@ -163,11 +178,13 @@ export default function InicioPage({ session, onSignOut }) {
     const emailLower = email.trim().toLowerCase()
     const emailPattern = escapeForILikeExact(emailLower)
 
-    const pu = await supabase
-      .from('punches')
-      .select('*')
-      .eq('user_id', uid)
-      .order('punched_at', { ascending: true })
+    let pu = { data: [], error: null }
+    try {
+      const punchList = await fetchWorkerPunchesForSession(supabase, session)
+      pu = { data: punchList, error: null }
+    } catch (e) {
+      pu = { data: [], error: e }
+    }
 
     const pr = await supabase
       .from('worker_profiles')
@@ -300,7 +317,6 @@ export default function InicioPage({ session, onSignOut }) {
     reloadData()
   }, [uid])
 
-  const todayIso = formatDateLocalISO(new Date())
   const slotsToday = useMemo(
     () =>
       scheduleSlots
@@ -366,11 +382,8 @@ export default function InicioPage({ session, onSignOut }) {
     [profileForPay, summary.totalGross],
   )
   const showMoneyExtras = useMemo(
-    () =>
-      extras.payrollIncluded > 0 ||
-      extras.parking > 0 ||
-      extras.gasoil > 0,
-    [extras],
+    () => extras.payrollIncluded > 0 || summary.totalGross > 0,
+    [extras.payrollIncluded, summary.totalGross],
   )
 
   async function punch(kind, { noPay = false } = {}) {
@@ -392,9 +405,13 @@ export default function InicioPage({ session, onSignOut }) {
   }
 
   const scheduleTableDays = useMemo(() => [...eachPlanillaGridDateISO()], [])
+  const workerWeekDays = useMemo(
+    () => visibleWorkerWeekDays(scheduleTableDays),
+    [scheduleTableDays],
+  )
 
   const horarioXlsxRows = useMemo(() => {
-    return scheduleTableDays.map((iso) => {
+    return workerWeekDays.map((iso) => {
       const d = parseLocalDate(iso)
       const wd = weekdayMonSunFromDate(d)
       const dia = `${weekdayShort(wd)} ${fmtDateEs(iso)}`
@@ -417,7 +434,7 @@ export default function InicioPage({ session, onSignOut }) {
       const fichado = formatFichadoPlainForExport(punches, iso)
       return { dia, previsto, fichado }
     })
-  }, [scheduleTableDays, scheduleSlots, punches])
+  }, [workerWeekDays, scheduleSlots, punches])
 
   const downloadHorarioXlsx = useCallback(async () => {
     setPunchMsg(null)
@@ -436,6 +453,46 @@ export default function InicioPage({ session, onSignOut }) {
       })
     }
   }, [email, eventWorker, horarioXlsxRows])
+
+  const downloadDailyReport = useCallback(async () => {
+    setPunchMsg(null)
+    setDailyExportBusy(true)
+    try {
+      const em = email.trim().toLowerCase()
+      const nombre = eventWorker?.full_name?.trim() || em
+      const reportRows = buildDailyReportRows(
+        [{ nombre, correo: em, punchLookupEmail: em }],
+        { [em]: punches },
+        reportDate,
+        {
+          paidShiftsFn: paidShiftsOverlappingDay,
+          hoursFn: workedPaidHoursOverlappingDay,
+          eurosFn: paidEurosOverlappingDay,
+          punchesForWorker: (_w, map) => map[em] ?? [],
+        },
+      )
+      await downloadDailyShiftsReportXlsx({
+        reportDateIso: reportDate,
+        title: 'Mi informe diario de turnos',
+        rows: reportRows,
+      })
+      setPunchMsg({ type: 'ok', text: 'Informe del día descargado.' })
+    } catch (e) {
+      setPunchMsg({
+        type: 'error',
+        text: `No se pudo generar el informe: ${e?.message ?? e}`,
+      })
+    }
+    setDailyExportBusy(false)
+  }, [email, eventWorker, punches, reportDate])
+
+  const summaryRowsVisible = useMemo(
+    () =>
+      summary.rows.filter((r) =>
+        workerWeekDays.includes(r.dateIso),
+      ),
+    [summary.rows, workerWeekDays],
+  )
 
   function dismissHorarioAviso() {
     if (horarioBanner?.createdAt) {
@@ -649,18 +706,39 @@ export default function InicioPage({ session, onSignOut }) {
 
         {tab === 'horario' && (
           <div className="tab-panel">
-            <div className="tab-panel-toolbar">
-              <button
-                type="button"
-                className="secondary"
-                disabled={loadingData}
-                onClick={downloadHorarioXlsx}
-              >
-                Descargar Excel (.xlsx)
-              </button>
-              <span className="muted small">
-                Mismo horario que la tabla (abrir en Excel e imprimir).
-              </span>
+            <div className="worker-horario-toolbar card subpanel">
+              <p className="muted small worker-week-hint">
+                Tu semana completa de la feria (previsto y fichado).
+              </p>
+              <div className="day-view-toolbar-row">
+                <label className="day-view-label">
+                  Informe de un día
+                  <input
+                    type="date"
+                    className="table-input day-view-date-input"
+                    value={reportDate}
+                    min={scheduleTableDays[0] ?? todayIso}
+                    max={scheduleTableDays[scheduleTableDays.length - 1] ?? todayIso}
+                    onChange={(e) => setReportDate(e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={loadingData || dailyExportBusy}
+                  onClick={downloadDailyReport}
+                >
+                  {dailyExportBusy ? 'Generando…' : 'Informe del día (Excel)'}
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={loadingData}
+                  onClick={downloadHorarioXlsx}
+                >
+                  Semana completa (Excel)
+                </button>
+              </div>
             </div>
             <div className="table-wrap horario-scroll-wrap">
               <table className="rules-table schedule-table horario-sticky-table">
@@ -672,10 +750,18 @@ export default function InicioPage({ session, onSignOut }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {scheduleTableDays.map((iso) => {
+                  {workerWeekDays.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="muted">
+                        Sin días de feria en tu planilla.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {workerWeekDays.map((iso) => {
                     const d = parseLocalDate(iso)
                     const wd = weekdayMonSunFromDate(d)
                     const slotList = slotsForDate(iso)
+                    const todayRow = isTodayIso(iso, todayIso)
                     const planned =
                       slotList.length > 0 ? (
                         <div className="planned-stack">
@@ -713,7 +799,8 @@ export default function InicioPage({ session, onSignOut }) {
                       ) : (
                         '—'
                       )
-                    const shifts = paidShiftsOverlappingDay(punches, iso)
+                    const shifts = displayShiftsForDay(punches, iso)
+                    const dayRawPunches = punchesForCalendarDay(punches, iso)
                     const hPaid = workedPaidHoursOverlappingDay(punches, iso)
                     const hNp = workedNoPayHoursOverlappingDay(punches, iso)
                     const ePaid = paidEurosOverlappingDay(punches, iso)
@@ -772,10 +859,16 @@ export default function InicioPage({ session, onSignOut }) {
                         </span>
                       ) : null
                     return (
-                      <tr key={iso}>
+                      <tr
+                        key={iso}
+                        className={todayRow ? 'horario-row-today' : 'horario-row-past'}
+                      >
                         <td className="horario-sticky-day">
                           <strong>{weekdayShort(wd)}</strong>{' '}
                           <span className="muted small">{fmtDateEs(iso)}</span>
+                          {todayRow ? (
+                            <span className="badge-today small">Hoy</span>
+                          ) : null}
                         </td>
                         <td>{planned}</td>
                         <td>
@@ -785,6 +878,24 @@ export default function InicioPage({ session, onSignOut }) {
                             <span className="muted small">
                               {formatHoursMinutes(hoursLegacy)} (detalle)
                             </span>
+                          ) : dayRawPunches.length > 0 ? (
+                            <ul className="punch-today-list fichado-raw-day">
+                              {dayRawPunches.map((p) => (
+                                <li key={p.id}>
+                                  {p.punch_type === 'in' ? (
+                                    <span className="badge-in badge-fich-in">E</span>
+                                  ) : (
+                                    <span className="badge-out badge-fich-out">S</span>
+                                  )}{' '}
+                                  <span className="time-strong">
+                                    {fmtClock(p.punched_at)}
+                                  </span>
+                                  {p.no_pay ? (
+                                    <span className="muted small"> (sin cobro)</span>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ul>
                           ) : past ? (
                             <span className="muted">Sin fichajes</span>
                           ) : (
@@ -812,7 +923,7 @@ export default function InicioPage({ session, onSignOut }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {summary.rows.map((r) => (
+                  {summaryRowsVisible.map((r) => (
                     <tr key={r.dateIso}>
                       <td>
                         {r.weekdayLabel} {fmtDateEs(r.dateIso)}
@@ -850,21 +961,12 @@ export default function InicioPage({ session, onSignOut }) {
                         Tras descontar nómina (horas en mano):{' '}
                         <strong>{extras.extraAfterPayroll.toFixed(2)} €</strong>
                       </li>
-                    ) : null}
-                    {extras.parking > 0 ? (
-                      <li>
-                        Parking: <strong>{extras.parking.toFixed(2)} €</strong>
+                    ) : (
+                      <li className="money-total">
+                        Total estimado por horas:{' '}
+                        <strong>{extras.grossFromHours.toFixed(2)} €</strong>
                       </li>
-                    ) : null}
-                    {extras.gasoil > 0 ? (
-                      <li>
-                        Gasoil: <strong>{extras.gasoil.toFixed(2)} €</strong>
-                      </li>
-                    ) : null}
-                    <li className="money-total">
-                      Total aprox. en mano (horas + extras):{' '}
-                      <strong>{extras.totalCashExtra.toFixed(2)} €</strong>
-                    </li>
+                    )}
                   </ul>
                 </>
               ) : null}
