@@ -45,6 +45,11 @@ import {
 import { escapeForILikeExact } from '../lib/emailMatch.js'
 import { sessionIsInsecure } from '../lib/insecureLogin.js'
 import { fetchWorkerPunchesForSession } from '../lib/workerPunches.js'
+import {
+  canPunchKind,
+  hasOpenPaidIn,
+  punchBlockedMessage,
+} from '../lib/punchSequence.js'
 
 function fmtClock(iso) {
   if (!iso) return '—'
@@ -123,6 +128,7 @@ export default function InicioPage({ session, onSignOut }) {
   const [dailyExportBusy, setDailyExportBusy] = useState(false)
   const todayIso = todayIsoLocal()
   const [punchMsg, setPunchMsg] = useState(null)
+  const [punching, setPunching] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [horarioBanner, setHorarioBanner] = useState(null)
   const [planillaExtrasRow, setPlanillaExtrasRow] = useState(null)
@@ -339,20 +345,9 @@ export default function InicioPage({ session, onSignOut }) {
     return sorted[0]
   }, [punches])
 
-  const punchChains = useMemo(() => {
-    const sortF = (a, b) =>
-      new Date(a.punched_at).getTime() - new Date(b.punched_at).getTime()
-    const paid = punches.filter((p) => !p.no_pay).sort(sortF)
-    function openIn(list) {
-      let o = false
-      for (const p of list) {
-        if (p.punch_type === 'in') o = true
-        else if (p.punch_type === 'out') o = false
-      }
-      return o
-    }
-    return { openPaidIn: openIn(paid) }
-  }, [punches])
+  const openPaidIn = useMemo(() => hasOpenPaidIn(punches), [punches])
+  const canPunchIn = useMemo(() => canPunchKind(punches, 'in'), [punches])
+  const canPunchOut = useMemo(() => canPunchKind(punches, 'out'), [punches])
 
   const profileForPay = useMemo(() => {
     const pl = planillaExtrasRow
@@ -387,8 +382,16 @@ export default function InicioPage({ session, onSignOut }) {
   )
 
   async function punch(kind, { noPay = false } = {}) {
-    if (!uid) return
+    if (!uid || punching) return
+    if (!noPay) {
+      const blocked = punchBlockedMessage(punches, kind)
+      if (blocked) {
+        setPunchMsg({ type: 'error', text: blocked })
+        return
+      }
+    }
     setPunchMsg(null)
+    setPunching(true)
     const row = {
       user_id: uid,
       punch_type: kind,
@@ -396,12 +399,20 @@ export default function InicioPage({ session, onSignOut }) {
       created_by: null,
       no_pay: noPay,
     }
-    const { error } = await supabase.from('punches').insert(row)
-    if (error) {
-      setPunchMsg({ type: 'error', text: friendlySupabaseError(error) })
-      return
+    try {
+      const { error } = await supabase.from('punches').insert(row)
+      if (error) {
+        setPunchMsg({ type: 'error', text: friendlySupabaseError(error) })
+        return
+      }
+      setPunchMsg({
+        type: 'ok',
+        text: kind === 'in' ? 'Entrada registrada.' : 'Salida registrada.',
+      })
+      await reloadData()
+    } finally {
+      setPunching(false)
     }
-    await reloadData()
   }
 
   const scheduleTableDays = useMemo(() => [...eachPlanillaGridDateISO()], [])
@@ -657,22 +668,32 @@ export default function InicioPage({ session, onSignOut }) {
           </ul>
         )}
 
+        {openPaidIn ? (
+          <p className="hint ok punch-state-hint" role="status">
+            Tienes una <strong>entrada sin salida</strong>. Picar salida para cerrar el turno.
+          </p>
+        ) : (
+          <p className="hint muted small punch-state-hint" role="status">
+            Sin turno abierto. Picar entrada para empezar.
+          </p>
+        )}
+
         <div className="punch-actions punch-actions-grid">
           <button
             type="button"
             className="btn-punch btn-in"
-            disabled={loadingData || punchChains.openPaidIn}
+            disabled={loadingData || punching || !canPunchIn}
             onClick={() => punch('in', { noPay: false })}
           >
-            Fichar entrada
+            {punching ? 'Guardando…' : 'Fichar entrada'}
           </button>
           <button
             type="button"
             className="btn-punch btn-out"
-            disabled={loadingData || !punchChains.openPaidIn}
+            disabled={loadingData || punching || !canPunchOut}
             onClick={() => punch('out', { noPay: false })}
           >
-            Fichar salida
+            {punching ? 'Guardando…' : 'Fichar salida'}
           </button>
         </div>
         {punchMsg && (

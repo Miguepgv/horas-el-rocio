@@ -1351,6 +1351,10 @@
   color: #fff;
 }
 
+.punch-state-hint {
+  margin: 0.5rem 0 0.25rem;
+}
+
 .punch-actions-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
