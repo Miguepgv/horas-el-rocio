@@ -22,8 +22,21 @@ export function isMissingTableError(err) {
   return false
 }
 
+export function isNetworkFetchError(err) {
+  const m = formatSupabaseErrText(err)
+  return /failed to fetch|networkerror|load failed|network request failed/i.test(m)
+}
+
 export function friendlySupabaseError(err) {
   const m = formatSupabaseErrText(err)
+  if (isNetworkFetchError(err)) {
+    return (
+      'No se pudo conectar con Supabase desde el navegador. Suele ser Kaspersky u otro antivirus ' +
+      'bloqueando la red (en el error aparece kaspersky-labs.com). Prueba: 1) Reinicia con `npm run dev` ' +
+      '(ya hay proxy local en `.env.development.local`). 2) Pausa Kaspersky 2 min y recarga. ' +
+      '3) Ventana de incógnito sin extensiones.'
+    )
+  }
   if (!isMissingTableError(err)) {
     return m || 'Error desconocido al hablar con Supabase.'
   }

@@ -7,48 +7,43 @@ function formatDateLocalISO(d) {
   return `${y}-${m}-${day}`
 }
 
-function weekdayMonSunFromDate(d) {
-  const j = d.getDay()
-  return j === 0 ? 7 : j
-}
-
 /**
- * €/h según reglas El Rocío 2026 (instante local).
- * Orden de aplicación (la primera que coincida gana):
- * 1) Vie 15 may ≥18:00 hasta Lun 18 may <06:00 → 12€
- * 2) Lunes 00:00–06:00 → 15€
- * 3) Martes >06:00 (resto del martes) → 12€
- * 4) Viernes >06:00 hasta Dom ≤23:59 → 12€
- * 5) Lunes 06:01 en adelante hasta Vie 06:00 (tramo “entre semana”) → 10€
+ * €/h El Rocío 2026 — la primera regla que coincida gana.
+ *
+ * 15 €/h
+ *   Lunes 25 may 00:00 → martes 26 may 05:59
+ *
+ * 12 €/h
+ *   Viernes 15 may 00:00 → lunes 18 may 03:00 (madrugada dom→lun)
+ *   Viernes 22 may 06:00 → domingo 24 may 23:59
+ *   Martes 26 may desde 06:00
+ *
+ * 10 €/h — resto de entre semana dentro del evento (y fuera del periodo)
  */
 export function eurPerHourAt(d) {
   const iso = formatDateLocalISO(d)
   const from = PAY_EVENT_EL_ROCIO.dateFrom
   const to = PAY_EVENT_EL_ROCIO.dateTo
-  /** Pruebas / días fuera del periodo oficial: tarifa base para que el cobro no salga a 0 €/h. */
   if (iso < from || iso > to) return 10
 
-  const wd = weekdayMonSunFromDate(d)
   const t = d.getHours() * 60 + d.getMinutes()
 
-  const opening12 =
-    (iso === '2026-05-15' && t >= 18 * 60) ||
-    (iso > '2026-05-15' && iso < '2026-05-18') ||
-    (iso === '2026-05-18' && t < 6 * 60)
-  if (opening12) return 12
+  if (iso === '2026-05-25' || (iso === '2026-05-26' && t < 6 * 60)) {
+    return 15
+  }
 
-  if (wd === 1 && t < 6 * 60) return 15
+  const apertura12 =
+    (iso >= '2026-05-15' && iso < '2026-05-18') ||
+    (iso === '2026-05-18' && t < 3 * 60)
+  if (apertura12) return 12
 
-  if (wd === 2 && t > 6 * 60) return 12
+  const finSemana12 =
+    (iso === '2026-05-22' && t >= 6 * 60) ||
+    iso === '2026-05-23' ||
+    iso === '2026-05-24'
+  if (finSemana12) return 12
 
-  if (wd === 5 && t > 6 * 60) return 12
-  if (wd === 6) return 12
-  if (wd === 7 && t < 24 * 60) return 12
-
-  if (wd === 1 && t >= 6 * 60) return 10
-  if (wd === 2 && t <= 6 * 60) return 10
-  if (wd === 3 || wd === 4) return 10
-  if (wd === 5 && t <= 6 * 60) return 10
+  if (iso === '2026-05-26' && t >= 6 * 60) return 12
 
   return 10
 }
