@@ -47,11 +47,21 @@ export function eachEventDateISO() {
 export function eachCobroDisplayDateISO(punches) {
   const dates = [...eachPlanillaGridDateISO()]
   const seen = new Set(dates)
+  const from = PAY_EVENT_EL_ROCIO.dateFrom
+  if (from && !seen.has(from)) {
+    seen.add(from)
+    dates.push(from)
+  }
   for (const p of punches ?? []) {
     const iso = formatDateLocalISO(new Date(p.punched_at))
     if (!seen.has(iso)) {
       seen.add(iso)
       dates.push(iso)
+    }
+    const startIso = paidShiftStartDayIso(new Date(p.punched_at))
+    if (p.punch_type === 'in' && !seen.has(startIso)) {
+      seen.add(startIso)
+      dates.push(startIso)
     }
   }
   return dates.sort()

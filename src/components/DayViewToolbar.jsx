@@ -17,6 +17,8 @@ export default function DayViewToolbar({
   weeklyDownloadLabel = 'Informe semana (Excel)',
   showReportDownload = true,
   showWeekDownload = true,
+  dateLabel = 'Día del informe',
+  hintText,
   children,
 }) {
   return (
@@ -24,7 +26,7 @@ export default function DayViewToolbar({
       <div className="day-view-toolbar-row">
         {showReportDownload ? (
           <label className="day-view-label">
-            Día del informe
+            {dateLabel}
             <input
               type="date"
               className="table-input day-view-date-input"
@@ -83,10 +85,14 @@ export default function DayViewToolbar({
           </button>
         ) : null}
       </div>
-      <p className="muted small day-view-toolbar-hint">
-        Por defecto solo el día de hoy. Puedes mostrar días anteriores o posteriores
-        con los botones de arriba.
-      </p>
+      {hintText ? (
+        <p className="muted small day-view-toolbar-hint">{hintText}</p>
+      ) : (
+        <p className="muted small day-view-toolbar-hint">
+          Por defecto solo el día elegido arriba. Puedes mostrar días anteriores o
+          posteriores con los botones de arriba.
+        </p>
+      )}
     </div>
   )
 }

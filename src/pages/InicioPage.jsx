@@ -10,6 +10,7 @@ import { resolveAdminAccess } from '../lib/admin.js'
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 import {
   buildDailySummary,
+  eachCobroDisplayDateISO,
   fixedWorkerExtras,
   formatDateLocalISO,
   formatHoursMinutes,
@@ -28,10 +29,7 @@ import {
   friendlySupabaseError,
   isMissingTableError,
 } from '../lib/dbErrors.js'
-import {
-  eachPlanillaGridDateISO,
-  planillaRowToSlots,
-} from '../lib/rocioPlanillaSchedule.js'
+import { planillaRowToSlots } from '../lib/rocioPlanillaSchedule.js'
 import { downloadMiHorarioXlsx } from '../lib/exportScheduleXlsx.js'
 import {
   buildDailyReportRows,
@@ -50,6 +48,7 @@ import {
   hasOpenPaidIn,
   punchBlockedMessage,
 } from '../lib/punchSequence.js'
+import { shiftThankYouMessage } from '../lib/shiftThankYouMessage.js'
 
 function fmtClock(iso) {
   if (!iso) return '—'
@@ -177,10 +176,11 @@ export default function InicioPage({ session, onSignOut }) {
     }
   }, [email])
 
-  async function reloadData() {
-    if (!uid) return
+  async function reloadData(opts = {}) {
+    const { keepPunchMsg = false } = opts
+    if (!uid) return { ok: false }
     setLoadingData(true)
-    setPunchMsg(null)
+    if (!keepPunchMsg) setPunchMsg(null)
     const emailLower = email.trim().toLowerCase()
     const emailPattern = escapeForILikeExact(emailLower)
 
@@ -317,6 +317,7 @@ export default function InicioPage({ session, onSignOut }) {
     setScheduleSlots(slots)
     setPlanillaExtrasRow(planillaRow ?? null)
     setLoadingData(false)
+    return { ok: errs.length === 0 }
   }
 
   useEffect(() => {
@@ -405,20 +406,22 @@ export default function InicioPage({ session, onSignOut }) {
         setPunchMsg({ type: 'error', text: friendlySupabaseError(error) })
         return
       }
-      setPunchMsg({
-        type: 'ok',
-        text: kind === 'in' ? 'Entrada registrada.' : 'Salida registrada.',
-      })
-      await reloadData()
+      const msg =
+        kind === 'in'
+          ? { type: 'ok', text: 'Entrada registrada.' }
+          : kind === 'out' && !noPay
+            ? { type: 'thanks', text: shiftThankYouMessage(new Date()) }
+            : { type: 'ok', text: 'Salida registrada.' }
+      const reload = await reloadData({ keepPunchMsg: true })
+      if (reload?.ok !== false) setPunchMsg(msg)
     } finally {
       setPunching(false)
     }
   }
 
-  const scheduleTableDays = useMemo(() => [...eachPlanillaGridDateISO()], [])
   const workerWeekDays = useMemo(
-    () => visibleWorkerWeekDays(scheduleTableDays),
-    [scheduleTableDays],
+    () => visibleWorkerWeekDays(eachCobroDisplayDateISO(punches)),
+    [punches],
   )
 
   const horarioXlsxRows = useMemo(() => {
@@ -497,13 +500,13 @@ export default function InicioPage({ session, onSignOut }) {
     setDailyExportBusy(false)
   }, [email, eventWorker, punches, reportDate])
 
-  const summaryRowsVisible = useMemo(
-    () =>
-      summary.rows.filter((r) =>
-        workerWeekDays.includes(r.dateIso),
-      ),
-    [summary.rows, workerWeekDays],
-  )
+  const summaryRowsVisible = useMemo(() => {
+    const from = PAY_EVENT_EL_ROCIO.dateFrom
+    const to = PAY_EVENT_EL_ROCIO.dateTo
+    return summary.rows.filter(
+      (r) => r.dateIso >= from && r.dateIso <= to,
+    )
+  }, [summary.rows])
 
   function dismissHorarioAviso() {
     if (horarioBanner?.createdAt) {
@@ -697,7 +700,15 @@ export default function InicioPage({ session, onSignOut }) {
           </button>
         </div>
         {punchMsg && (
-          <p className={`hint ${punchMsg.type === 'error' ? 'error' : 'ok'}`}>
+          <p
+            className={`hint ${
+              punchMsg.type === 'error'
+                ? 'error'
+                : punchMsg.type === 'thanks'
+                  ? 'thanks'
+                  : 'ok'
+            }`}
+          >
             {punchMsg.text}
           </p>
         )}
@@ -738,8 +749,8 @@ export default function InicioPage({ session, onSignOut }) {
                     type="date"
                     className="table-input day-view-date-input"
                     value={reportDate}
-                    min={scheduleTableDays[0] ?? todayIso}
-                    max={scheduleTableDays[scheduleTableDays.length - 1] ?? todayIso}
+                    min={workerWeekDays[0] ?? todayIso}
+                    max={workerWeekDays[workerWeekDays.length - 1] ?? todayIso}
                     onChange={(e) => setReportDate(e.target.value)}
                   />
                 </label>

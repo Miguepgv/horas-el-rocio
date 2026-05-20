@@ -143,6 +143,17 @@
   font-size: 0.9rem;
 }
 
+.hint.thanks {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text-h);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  font-weight: 550;
+}
+
 .hint.ok {
   color: var(--ok);
 }

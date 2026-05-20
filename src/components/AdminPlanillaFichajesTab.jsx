@@ -5,7 +5,6 @@ import {
   buildFichajesWorkerEntries,
   punchesForWorkerEntry,
 } from '../lib/fichajesWorkerList.js'
-import { eachPlanillaGridDateISO } from '../lib/rocioPlanillaSchedule.js'
 import {
   buildDailyReportRows,
   downloadDailyShiftsReportXlsx,
@@ -19,6 +18,7 @@ import {
   weekReportDayRange,
 } from '../lib/feriaDayView.js'
 import {
+  eachCobroDisplayDateISO,
   formatHoursMinutes,
   paidEurosOverlappingDay,
   paidShiftsOverlappingDay,
@@ -37,7 +37,7 @@ function fmtDateEs(isoYmd) {
   })
 }
 
-function WorkerDayRows({ dayList, punches, todayIso }) {
+function WorkerDayRows({ dayList, punches, viewDateIso, calendarTodayIso }) {
   return dayList.map((iso) => {
     const d = parseLocalDate(iso)
     const wd = weekdayMonSunFromDate(d)
@@ -45,14 +45,15 @@ function WorkerDayRows({ dayList, punches, todayIso }) {
     const hPaid = workedPaidHoursOverlappingDay(punches, iso)
     const ePaid = paidEurosOverlappingDay(punches, iso)
     const avgRate = hPaid > 0 ? ePaid / hPaid : null
-    const today = isTodayIso(iso, todayIso)
+    const selected = iso === viewDateIso
+    const calendarToday = isTodayIso(iso, calendarTodayIso)
     return (
       <tr
         key={iso}
         className={
-          today
+          selected
             ? 'fichajes-row-today'
-            : iso < todayIso
+            : iso < viewDateIso
               ? 'fichajes-row-past'
               : 'fichajes-row-future'
         }
@@ -60,8 +61,10 @@ function WorkerDayRows({ dayList, punches, todayIso }) {
         <td className="fichajes-sticky-day">
           <strong>{weekdayShort(wd)}</strong>{' '}
           <span className="muted small">{fmtDateEs(iso)}</span>
-          {today ? (
-            <span className="badge-today small">Hoy</span>
+          {selected ? (
+            <span className="badge-today small">
+              {calendarToday ? 'Hoy' : 'Revisando'}
+            </span>
           ) : null}
         </td>
         <td>
@@ -104,34 +107,42 @@ export default function AdminPlanillaFichajesTab({
   onCorregir,
 }) {
   const todayIso = todayIsoLocal()
-  const allDays = useMemo(() => [...eachPlanillaGridDateISO()], [])
-  const { past, future } = useMemo(
-    () => partitionEventDays(allDays, todayIso),
-    [allDays, todayIso],
+  const allPunchesFlat = useMemo(
+    () => Object.values(punchByEmail ?? {}).flat(),
+    [punchByEmail],
   )
-
+  const allDays = useMemo(
+    () => eachCobroDisplayDateISO(allPunchesFlat),
+    [allPunchesFlat],
+  )
   const [showPastDays, setShowPastDays] = useState(false)
   const [showFutureDays, setShowFutureDays] = useState(false)
   const [reportDate, setReportDate] = useState(todayIso)
   const [downloadBusy, setDownloadBusy] = useState(false)
   const [exportMsg, setExportMsg] = useState(null)
 
-  const visibleDays = useMemo(
-    () =>
-      visibleAdminDays(allDays, {
+  const { past, future } = useMemo(
+    () => partitionEventDays(allDays, reportDate),
+    [allDays, reportDate],
+  )
+
+  const visibleDays = useMemo(() => {
+    if (showPastDays || showFutureDays) {
+      return visibleAdminDays(allDays, {
         showPast: showPastDays,
         showFuture: showFutureDays,
-        todayIso,
-      }),
-    [allDays, showPastDays, showFutureDays, todayIso],
-  )
+        todayIso: reportDate,
+      })
+    }
+    return allDays.includes(reportDate) ? [reportDate] : []
+  }, [allDays, showPastDays, showFutureDays, reportDate])
 
   const weekReportDays = useMemo(
     () =>
-      weekReportDayRange(allDays, todayIso, {
+      weekReportDayRange(allDays, reportDate, {
         includeFuture: showFutureDays,
       }),
-    [allDays, todayIso, showFutureDays],
+    [allDays, reportDate, showFutureDays],
   )
 
   const reportFns = useMemo(
@@ -145,7 +156,7 @@ export default function AdminPlanillaFichajesTab({
   )
 
   const minReportDate = allDays[0] ?? todayIso
-  const maxReportDate = todayIso
+  const maxReportDate = allDays[allDays.length - 1] ?? todayIso
 
   const workers = useMemo(
     () =>
@@ -228,6 +239,8 @@ export default function AdminPlanillaFichajesTab({
         onDownloadDaily={handleDownloadDaily}
         onDownloadWeekly={handleDownloadWeekly}
         downloadBusy={downloadBusy}
+        dateLabel="Día a revisar"
+        hintText="Elige el día que quieres revisar (útil después de medianoche: sigue en turno del día anterior). La tabla y el resumen de cada persona usan esa fecha. Los informes Excel usan el mismo día."
       />
       {exportMsg ? (
         <p className={`hint ${exportMsg.type === 'error' ? 'error' : 'ok'}`}>
@@ -236,8 +249,8 @@ export default function AdminPlanillaFichajesTab({
       ) : null}
 
       <p className="muted small admin-fichajes-hint">
-        Vista rápida del día actual. Usa el informe Excel para revisar cualquier
-        día con listado de turnos y totales.
+        Turnos picados por día de cobro (entrada del turno). Cambia la fecha arriba
+        para ver otro día sin esperar al calendario.
       </p>
       {planillaSinCorreo > 0 ? (
         <p className="muted small admin-fichajes-hint">
@@ -260,8 +273,8 @@ export default function AdminPlanillaFichajesTab({
             (s, iso) => s + paidEurosOverlappingDay(punches, iso),
             0,
           )
-          const todayHPaid = workedPaidHoursOverlappingDay(punches, todayIso)
-          const todayEPaid = paidEurosOverlappingDay(punches, todayIso)
+          const viewHPaid = workedPaidHoursOverlappingDay(punches, reportDate)
+          const viewEPaid = paidEurosOverlappingDay(punches, reportDate)
 
           return (
             <div
@@ -284,13 +297,14 @@ export default function AdminPlanillaFichajesTab({
                     Solo app / plantilla
                   </span>
                 ) : null}
-                {todayHPaid > 0 || todayEPaid > 0 ? (
+                {viewHPaid > 0 || viewEPaid > 0 ? (
                   <span className="muted small fichajes-today-total">
-                    Hoy: <strong>{formatHoursMinutes(todayHPaid)}</strong>
-                    {todayEPaid > 0 ? (
+                    {fmtDateEs(reportDate)}:{' '}
+                    <strong>{formatHoursMinutes(viewHPaid)}</strong>
+                    {viewEPaid > 0 ? (
                       <>
                         {' '}
-                        · <strong>{todayEPaid.toFixed(2)} €</strong>
+                        · <strong>{viewEPaid.toFixed(2)} €</strong>
                       </>
                     ) : null}
                   </span>
@@ -319,15 +333,16 @@ export default function AdminPlanillaFichajesTab({
                     {visibleDays.length === 0 ? (
                       <tr>
                         <td colSpan={3} className="muted">
-                          Hoy no está dentro del periodo de la feria en la
-                          planilla.
+                          La fecha elegida no está en el periodo de cobro de la
+                          feria.
                         </td>
                       </tr>
                     ) : (
                       <WorkerDayRows
                         dayList={visibleDays}
                         punches={punches}
-                        todayIso={todayIso}
+                        viewDateIso={reportDate}
+                        calendarTodayIso={todayIso}
                       />
                     )}
                   </tbody>

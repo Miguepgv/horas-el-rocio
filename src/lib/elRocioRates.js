@@ -32,8 +32,11 @@ export function eurPerHourAt(d) {
     return 15
   }
 
+  // Viernes 15 may (apertura feria): todo el día a 12 €/h
+  if (iso === '2026-05-15') return 12
+
   const apertura12 =
-    (iso >= '2026-05-15' && iso < '2026-05-18') ||
+    (iso > '2026-05-15' && iso < '2026-05-18') ||
     (iso === '2026-05-18' && t < 3 * 60)
   if (apertura12) return 12
 
