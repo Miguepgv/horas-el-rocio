@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import AdminFichajesPaySummary from './AdminFichajesPaySummary.jsx'
 import FichadoShiftRows from './FichadoShiftRows.jsx'
 import DayViewToolbar from './DayViewToolbar.jsx'
 import {
@@ -275,6 +276,9 @@ export default function AdminPlanillaFichajesTab({
           )
           const viewHPaid = workedPaidHoursOverlappingDay(punches, reportDate)
           const viewEPaid = paidEurosOverlappingDay(punches, reportDate)
+          const gasoil = worker.gasoil_euros ?? 0
+          const parking = worker.parking_euros ?? 0
+          const nomina = worker.nomina_event_euros ?? 0
 
           return (
             <div
@@ -349,20 +353,14 @@ export default function AdminPlanillaFichajesTab({
                 </table>
               </div>
               <p className="admin-fichajes-worker-total muted small">
-                <strong>Total periodo feria:</strong>{' '}
-                {totalHPaid > 0 ? (
-                  <>
-                    <strong>{formatHoursMinutes(totalHPaid)}</strong>
-                    {totalEPaid > 0 ? (
-                      <>
-                        {' '}
-                        · <strong>{totalEPaid.toFixed(2)} €</strong>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  '—'
-                )}
+                <strong>Total periodo feria:</strong>
+                <AdminFichajesPaySummary
+                  hours={totalHPaid}
+                  eurosHoras={totalEPaid}
+                  gasoil={gasoil}
+                  parking={parking}
+                  nomina={nomina}
+                />
               </p>
             </div>
           )

@@ -378,8 +378,12 @@ export default function InicioPage({ session, onSignOut }) {
     [profileForPay, summary.totalGross],
   )
   const showMoneyExtras = useMemo(
-    () => extras.payrollIncluded > 0 || summary.totalGross > 0,
-    [extras.payrollIncluded, summary.totalGross],
+    () =>
+      extras.payrollIncluded > 0 ||
+      extras.parking > 0 ||
+      extras.gasoil > 0 ||
+      summary.totalGross > 0,
+    [extras, summary.totalGross],
   )
 
   async function punch(kind, { noPay = false } = {}) {
@@ -994,11 +998,25 @@ export default function InicioPage({ session, onSignOut }) {
                         <strong>{extras.extraAfterPayroll.toFixed(2)} €</strong>
                       </li>
                     ) : (
-                      <li className="money-total">
+                      <li>
                         Total estimado por horas:{' '}
                         <strong>{extras.grossFromHours.toFixed(2)} €</strong>
                       </li>
                     )}
+                    {extras.gasoil > 0 ? (
+                      <li>
+                        Gasoil: <strong>{extras.gasoil.toFixed(2)} €</strong>
+                      </li>
+                    ) : null}
+                    {extras.parking > 0 ? (
+                      <li>
+                        Parking: <strong>{extras.parking.toFixed(2)} €</strong>
+                      </li>
+                    ) : null}
+                    <li className="money-total">
+                      Total a pagar (horas − nómina + gasoil + parking):{' '}
+                      <strong>{extras.totalCashExtra.toFixed(2)} €</strong>
+                    </li>
                   </ul>
                 </>
               ) : null}

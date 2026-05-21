@@ -1,4 +1,5 @@
 import { formatHoursMinutes } from './payCompute.js'
+import { computeAdminPayout } from './planillaEuroExtras.js'
 import { formatShiftsReportLines } from './shiftReportFormat.js'
 import { fmtDayLabel, fmtDayShortHeader } from './feriaDayView.js'
 import { parseLocalDate, weekdayShort } from './payCompute.js'
@@ -20,10 +21,68 @@ async function loadXlsx() {
   return import('xlsx')
 }
 
-/**
- * Informe diario: listado de turnos picados y total horas por persona.
- * @param {{ reportDateIso: string, title?: string, rows: Array<{ nombre: string, correo?: string, shiftsText: string, hours: number, euros: number }> }} opts
- */
+const PAY_TAIL_HEADERS = [
+  '€ bruto horas',
+  'Nómina (resta) €',
+  'Horas en mano €',
+  'Gasoil €',
+  'Parking €',
+  'Total a pagar €',
+]
+
+function payoutCells(p) {
+  return [
+    p.brutoHoras > 0 ? Number(p.brutoHoras.toFixed(2)) : '—',
+    p.nomina > 0 ? Number(p.nomina.toFixed(2)) : '—',
+    p.horasEnMano > 0 ? Number(p.horasEnMano.toFixed(2)) : '—',
+    p.gasoil > 0 ? Number(p.gasoil.toFixed(2)) : '—',
+    p.parking > 0 ? Number(p.parking.toFixed(2)) : '—',
+    p.totalPagar > 0 ? Number(p.totalPagar.toFixed(2)) : '—',
+  ]
+}
+
+function payoutFromWorkerPeriod(w, eurosHoras) {
+  return computeAdminPayout({
+    eurosHoras,
+    nomina: w.nomina_event_euros ?? 0,
+    gasoil: w.gasoil_euros ?? 0,
+    parking: w.parking_euros ?? 0,
+  })
+}
+
+function payoutFromWorkerDay(w, eurosDay) {
+  const brutoHoras = Number(eurosDay ?? 0)
+  return {
+    brutoHoras,
+    nomina: w.nomina_event_euros ?? 0,
+    horasEnMano: brutoHoras,
+    gasoil: w.gasoil_euros ?? 0,
+    parking: w.parking_euros ?? 0,
+    totalPagar: brutoHoras,
+  }
+}
+
+function sumPayoutRows(rows) {
+  return rows.reduce(
+    (acc, p) => ({
+      brutoHoras: acc.brutoHoras + p.brutoHoras,
+      nomina: acc.nomina + p.nomina,
+      horasEnMano: acc.horasEnMano + p.horasEnMano,
+      gasoil: acc.gasoil + p.gasoil,
+      parking: acc.parking + p.parking,
+      totalPagar: acc.totalPagar + p.totalPagar,
+    }),
+    {
+      brutoHoras: 0,
+      nomina: 0,
+      horasEnMano: 0,
+      gasoil: 0,
+      parking: 0,
+      totalPagar: 0,
+    },
+  )
+}
+
 export async function downloadDailyShiftsReportXlsx(opts) {
   const {
     reportDateIso,
@@ -32,41 +91,45 @@ export async function downloadDailyShiftsReportXlsx(opts) {
   } = opts ?? {}
   const XLSX = await loadXlsx()
   const dayLabel = fmtDayLabel(reportDateIso, weekdayShort, fmtDateEs)
-  const header = ['Nombre', 'Correo', 'Turnos del día', 'Total horas', 'Total €']
+  const header = ['Nombre', 'Correo', 'Turnos del día', 'Total horas', ...PAY_TAIL_HEADERS]
+  const payouts = rows.map((r) => r.payout)
   const body = rows.map((r) => [
     r.nombre ?? '',
     r.correo ?? '',
     r.shiftsText ?? '—',
     r.hours > 0 ? formatHoursMinutes(r.hours) : '—',
-    r.euros > 0 ? Number(r.euros.toFixed(2)) : '—',
+    ...payoutCells(r.payout),
   ])
   const totalH = rows.reduce((s, r) => s + (r.hours || 0), 0)
-  const totalE = rows.reduce((s, r) => s + (r.euros || 0), 0)
+  const totalPay = sumPayoutRows(payouts)
   const aoa = [
     [title],
     [`Día: ${dayLabel} (${reportDateIso})`],
+    ['En el informe semanal se resta nómina y se suman gasoil/parking del periodo.'],
     [],
     header,
     ...body,
     [],
-    ['TOTAL', '', '', formatHoursMinutes(totalH), totalE > 0 ? Number(totalE.toFixed(2)) : '—'],
+    ['TOTAL', '', '', formatHoursMinutes(totalH), ...payoutCells(totalPay)],
   ]
   const ws = XLSX.utils.aoa_to_sheet(aoa)
-  ws['!cols'] = [{ wch: 24 }, { wch: 28 }, { wch: 48 }, { wch: 14 }, { wch: 12 }]
+  ws['!cols'] = [
+    { wch: 24 },
+    { wch: 28 },
+    { wch: 48 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 14 },
+  ]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Día')
   XLSX.writeFile(wb, `informe-turnos-${reportDateIso}-${stampYmd()}.xlsx`)
 }
 
-/**
- * @param {Array<{ nombre: string, correo?: string|null, punchLookupEmail?: string|null }>} workers
- * @param {Record<string, Array>} punchByEmail
- * @param {string} reportDateIso
- * @param {(punches: Array, iso: string) => Array} paidShiftsFn
- * @param {(punches: Array, iso: string) => number} hoursFn
- * @param {(punches: Array, iso: string) => number} eurosFn
- * @param {(worker: object, punchByEmail: Record) => Array} punchesForWorker
- */
 export function buildDailyReportRows(
   workers,
   punchByEmail,
@@ -78,23 +141,20 @@ export function buildDailyReportRows(
     const shifts = paidShiftsFn(punches, reportDateIso)
     const hours = hoursFn(punches, reportDateIso)
     const euros = eurosFn(punches, reportDateIso)
+    const payout = payoutFromWorkerDay(w, euros)
     return {
       nombre: w.nombre,
       correo: w.correo || w.punchLookupEmail || '',
       shiftsText: formatShiftsReportLines(shifts),
       hours,
       euros,
+      payout,
       hasActivity: shifts.length > 0 || hours > 0,
     }
   })
 }
 
-export function buildWorkerWeekCells(
-  worker,
-  punchByEmail,
-  dayIsos,
-  fns,
-) {
+export function buildWorkerWeekCells(worker, punchByEmail, dayIsos, fns) {
   const punches = fns.punchesForWorker(worker, punchByEmail)
   const byDay = {}
   let totalH = 0
@@ -111,13 +171,10 @@ export function buildWorkerWeekCells(
     totalH += hours
     totalE += euros
   }
-  return { byDay, totalH, totalE }
+  const payout = payoutFromWorkerPeriod(worker, totalE)
+  return { byDay, totalH, totalE, payout }
 }
 
-/**
- * Informe semanal: bloque por día (como el diario) + hoja resumen con totales.
- * @param {{ dayIsos: string[], title?: string, workers: Array, punchByEmail: Record, fns: object }} opts
- */
 export async function downloadWeeklyShiftsReportXlsx(opts) {
   const {
     dayIsos = [],
@@ -135,10 +192,11 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
       : '—'
 
   let grandH = 0
-  let grandE = 0
+  const weekPayouts = []
   const aoaResumen = [
     [title],
     [`Periodo: ${rangeLabel}`],
+    ['Total a pagar = bruto horas − nómina + gasoil + parking (planilla).'],
     [],
     [
       'Nombre',
@@ -148,19 +206,19 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
         `${fmtDayShortHeader(iso, weekdayShort)} €`,
       ]),
       'Total horas',
-      'Total €',
+      ...PAY_TAIL_HEADERS,
     ],
   ]
 
   for (const w of workers) {
-    const { byDay, totalH, totalE } = buildWorkerWeekCells(
+    const { byDay, totalH, payout } = buildWorkerWeekCells(
       w,
       punchByEmail,
       dayIsos,
       fns,
     )
     grandH += totalH
-    grandE += totalE
+    weekPayouts.push(payout)
     aoaResumen.push([
       w.nombre ?? '',
       w.correo || w.punchLookupEmail || '',
@@ -172,9 +230,11 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
         ]
       }),
       totalH > 0 ? formatHoursMinutes(totalH) : '—',
-      totalE > 0 ? Number(totalE.toFixed(2)) : '—',
+      ...payoutCells(payout),
     ])
   }
+
+  const grandPay = sumPayoutRows(weekPayouts)
 
   aoaResumen.push([])
   aoaResumen.push([
@@ -194,7 +254,7 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
       ]
     }),
     formatHoursMinutes(grandH),
-    grandE > 0 ? Number(grandE.toFixed(2)) : '—',
+    ...payoutCells(grandPay),
   ])
 
   const wsResumen = XLSX.utils.aoa_to_sheet(aoaResumen)
@@ -204,6 +264,11 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
     ...dayIsos.flatMap(() => [{ wch: 10 }, { wch: 10 }]),
     { wch: 12 },
     { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 14 },
   ]
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen semana')
 
@@ -212,19 +277,19 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
   for (const iso of dayIsos) {
     const dayLabel = fmtDayLabel(iso, weekdayShort, fmtDateEs)
     let dayH = 0
-    let dayE = 0
     aoaDetalle.push([`—— ${dayLabel} (${iso}) ——`])
-    aoaDetalle.push(['Nombre', 'Correo', 'Turnos', 'Horas', '€'])
+    aoaDetalle.push(['Nombre', 'Correo', 'Turnos', 'Horas', ...PAY_TAIL_HEADERS])
     const dayRows = buildDailyReportRows(workers, punchByEmail, iso, fns)
+    const dayPayouts = []
     for (const r of dayRows) {
       dayH += r.hours
-      dayE += r.euros
+      dayPayouts.push(r.payout)
       aoaDetalle.push([
         r.nombre,
         r.correo,
         r.shiftsText,
         r.hours > 0 ? formatHoursMinutes(r.hours) : '—',
-        r.euros > 0 ? Number(r.euros.toFixed(2)) : '—',
+        ...payoutCells(r.payout),
       ])
     }
     aoaDetalle.push([
@@ -232,7 +297,7 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
       '',
       '',
       dayH > 0 ? formatHoursMinutes(dayH) : '—',
-      dayE > 0 ? Number(dayE.toFixed(2)) : '—',
+      ...payoutCells(sumPayoutRows(dayPayouts)),
     ])
     aoaDetalle.push([])
   }
@@ -242,11 +307,22 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
     '',
     '',
     formatHoursMinutes(grandH),
-    grandE > 0 ? Number(grandE.toFixed(2)) : '—',
+    ...payoutCells(grandPay),
   ])
 
   const wsDetalle = XLSX.utils.aoa_to_sheet(aoaDetalle)
-  wsDetalle['!cols'] = [{ wch: 22 }, { wch: 26 }, { wch: 44 }, { wch: 12 }, { wch: 10 }]
+  wsDetalle['!cols'] = [
+    { wch: 22 },
+    { wch: 26 },
+    { wch: 44 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 14 },
+  ]
   XLSX.utils.book_append_sheet(wb, wsDetalle, 'Por día')
 
   const from = dayIsos[0] ?? stampYmd()

@@ -7,6 +7,7 @@ import {
   ROCIO_PLANILLA_DAY_KEYS as DAY_KEYS,
   ROCIO_PLANILLA_EXTRA_KEYS as EXTRA_KEYS,
   ROCIO_PLANILLA_EXTRA_KEYS_UI as EXTRA_KEYS_UI,
+  ROCIO_PLANILLA_EXTRA_LABELS,
 } from '../lib/rocioPlanillaKeys.js'
 import { parsePlanillaWideCsv } from '../lib/csvSchedule.js'
 import { downloadPlanillaHorarioXlsx } from '../lib/exportScheduleXlsx.js'
@@ -456,9 +457,19 @@ export default function AdminPlanillaPanel() {
                 <tr>
                   <th className="planilla-th-nombre">Nombre</th>
                   <th className="planilla-th-correo">Correo (enlace)</th>
-                  <th className="planilla-th-euro" title="€ que ya van por nómina del evento (se restan del bruto horas)">
-                    Nómina €
-                  </th>
+                  {EXTRA_KEYS_UI.map((ek) => (
+                    <th
+                      key={ek}
+                      className="planilla-th-euro"
+                      title={
+                        ek === 'nomina_event_euros'
+                          ? '€ que ya van por nómina del evento (se restan del bruto horas)'
+                          : undefined
+                      }
+                    >
+                      {ROCIO_PLANILLA_EXTRA_LABELS[ek] ?? ek}
+                    </th>
+                  ))}
                   {headerDays}
                   <th className="planilla-th-actions" />
                 </tr>

@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
       __INSECURE_EMAIL_LOGIN_RAW__: JSON.stringify(insecureRaw),
     },
     server: {
-      host: '127.0.0.1',
+      host: true,
       port: 5173,
       strictPort: false,
       ...(proxyTarget

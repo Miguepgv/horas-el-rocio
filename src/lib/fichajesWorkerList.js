@@ -1,3 +1,5 @@
+import { planillaExtrasFromRow } from './planillaEuroExtras.js'
+
 function normEmail(s) {
   return String(s ?? '')
     .trim()
@@ -66,6 +68,7 @@ export function buildFichajesWorkerEntries(
     const punchLookupEmail = resolvePunchEmailForPlanillaRow(row, eventWorkers)
     if (punchLookupEmail) seenPunchEmail.add(punchLookupEmail)
 
+    const ex = planillaExtrasFromRow(row)
     entries.push({
       id: planillaKey,
       nombre,
@@ -73,6 +76,9 @@ export function buildFichajesWorkerEntries(
       punchLookupEmail,
       inPlanilla: true,
       needsCorreo: !planillaCorreo && !punchLookupEmail,
+      nomina_event_euros: ex.nomina_event_euros,
+      gasoil_euros: ex.gasoil_euros,
+      parking_euros: ex.parking_euros,
     })
   }
 
@@ -88,6 +94,9 @@ export function buildFichajesWorkerEntries(
       punchLookupEmail: em,
       inPlanilla: false,
       needsCorreo: false,
+      nomina_event_euros: 0,
+      gasoil_euros: 0,
+      parking_euros: 0,
     })
   }
 
@@ -102,6 +111,9 @@ export function buildFichajesWorkerEntries(
       punchLookupEmail: em,
       inPlanilla: false,
       needsCorreo: false,
+      nomina_event_euros: 0,
+      gasoil_euros: 0,
+      parking_euros: 0,
     })
   }
 
@@ -116,6 +128,9 @@ export function buildFichajesWorkerEntries(
       punchLookupEmail: e,
       inPlanilla: false,
       needsCorreo: false,
+      nomina_event_euros: 0,
+      gasoil_euros: 0,
+      parking_euros: 0,
     })
   }
 

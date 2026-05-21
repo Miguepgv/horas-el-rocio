@@ -10,8 +10,14 @@ export const ROCIO_PLANILLA_EXTRA_KEYS = [
   'parking_euros',
 ]
 
-/** Columnas € visibles en la app (gasoil/parking ocultos en interfaz). */
-export const ROCIO_PLANILLA_EXTRA_KEYS_UI = ['nomina_event_euros']
+/** Columnas € en planilla (admin y export). */
+export const ROCIO_PLANILLA_EXTRA_KEYS_UI = ROCIO_PLANILLA_EXTRA_KEYS
+
+export const ROCIO_PLANILLA_EXTRA_LABELS = {
+  nomina_event_euros: 'Nómina €',
+  gasoil_euros: 'Gasoil €',
+  parking_euros: 'Parking €',
+}
 
 export function emptyRocioPlanillaPayload() {
   const o = {

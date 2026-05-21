@@ -1157,6 +1157,28 @@
   font-size: 0.85rem;
 }
 
+.admin-fichajes-pay-summary {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.admin-fichajes-pay-line {
+  display: block;
+  margin-top: 0.35rem;
+  line-height: 1.45;
+}
+
+.admin-fichajes-pay-deduct {
+  color: var(--danger);
+}
+
+.admin-fichajes-pay-total {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  font-size: 1.02em;
+}
+
 .admin-fichajes-worker-total {
   margin: 0.65rem 0 0;
   padding-top: 0.5rem;
