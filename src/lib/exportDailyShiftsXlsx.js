@@ -26,7 +26,7 @@ const PAY_TAIL_HEADERS = [
   'Nómina (resta) €',
   'Horas en mano €',
   'Gasoil €',
-  'Parking €',
+  'Incentivo €',
   'Total a pagar €',
 ]
 
@@ -105,7 +105,7 @@ export async function downloadDailyShiftsReportXlsx(opts) {
   const aoa = [
     [title],
     [`Día: ${dayLabel} (${reportDateIso})`],
-    ['En el informe semanal se resta nómina y se suman gasoil/parking del periodo.'],
+    ['En el informe semanal se resta nómina y se suman gasoil/incentivo del periodo.'],
     [],
     header,
     ...body,
@@ -140,7 +140,7 @@ export function buildDailyReportRows(
     const punches = punchesForWorker(w, punchByEmail)
     const shifts = paidShiftsFn(punches, reportDateIso)
     const hours = hoursFn(punches, reportDateIso)
-    const euros = eurosFn(punches, reportDateIso)
+    const euros = eurosFn(punches, reportDateIso, w)
     const payout = payoutFromWorkerDay(w, euros)
     return {
       nombre: w.nombre,
@@ -162,7 +162,7 @@ export function buildWorkerWeekCells(worker, punchByEmail, dayIsos, fns) {
   for (const iso of dayIsos) {
     const shifts = fns.paidShiftsFn(punches, iso)
     const hours = fns.hoursFn(punches, iso)
-    const euros = fns.eurosFn(punches, iso)
+    const euros = fns.eurosFn(punches, iso, worker)
     byDay[iso] = {
       shiftsText: formatShiftsReportLines(shifts),
       hours,
@@ -196,7 +196,7 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
   const aoaResumen = [
     [title],
     [`Periodo: ${rangeLabel}`],
-    ['Total a pagar = bruto horas − nómina + gasoil + parking (planilla).'],
+    ['Total a pagar = bruto horas − nómina + gasoil + incentivo (planilla).'],
     [],
     [
       'Nombre',
@@ -246,7 +246,7 @@ export async function downloadWeeklyShiftsReportXlsx(opts) {
       for (const w of workers) {
         const punches = fns.punchesForWorker(w, punchByEmail)
         h += fns.hoursFn(punches, iso)
-        e += fns.eurosFn(punches, iso)
+        e += fns.eurosFn(punches, iso, w)
       }
       return [
         h > 0 ? formatHoursMinutes(h) : '—',

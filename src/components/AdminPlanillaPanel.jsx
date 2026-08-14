@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { friendlySupabaseError, isMissingTableError } from '../lib/dbErrors.js'
+import {
+  friendlySupabaseError,
+  isMissingColumnError,
+  isMissingTableError,
+} from '../lib/dbErrors.js'
 import { fetchPunchesGroupedByPlanillaEmail } from '../lib/adminPlanillaPunches.js'
 import {
   emptyRocioPlanillaPayload,
@@ -8,6 +12,10 @@ import {
   ROCIO_PLANILLA_EXTRA_KEYS as EXTRA_KEYS,
   ROCIO_PLANILLA_EXTRA_KEYS_UI as EXTRA_KEYS_UI,
   ROCIO_PLANILLA_EXTRA_LABELS,
+  ROCIO_PLANILLA_EXTRA_TITLES,
+  ROCIO_PLANILLA_RATE_KEYS as RATE_KEYS,
+  ROCIO_PLANILLA_RATE_LABELS,
+  ROCIO_PLANILLA_RATE_TITLES,
 } from '../lib/rocioPlanillaKeys.js'
 import { parsePlanillaWideCsv } from '../lib/csvSchedule.js'
 import { downloadPlanillaHorarioXlsx } from '../lib/exportScheduleXlsx.js'
@@ -23,6 +31,13 @@ import { planillaColumnHeader, planillaColumnTitle } from '../lib/planillaDayHea
 import AdminPlanillaFichajesTab from './AdminPlanillaFichajesTab.jsx'
 import DayViewToolbar from './DayViewToolbar.jsx'
 import PlanillaFichajesModal from './PlanillaFichajesModal.jsx'
+import { AGOSTO_WORKER_NAMES } from '../data/agostoRoster.js'
+import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
+import {
+  TARIFA_FINDE_OPTIONS,
+  TARIFA_MIERCOLES_OPTIONS,
+  workerRateProfile,
+} from '../lib/elRocioRates.js'
 
 function emptyRow() {
   return { ...emptyRocioPlanillaPayload(), id: null }
@@ -36,13 +51,18 @@ function parseEuroField(v) {
   return n
 }
 
-function planillaCsvRowToPayload(rec) {
+function rowPayload(row, includeRates) {
   const payload = {
-    nombre: String(rec.nombre ?? '').trim(),
-    correo: String(rec.correo ?? '').trim().toLowerCase() || null,
+    nombre: String(row.nombre ?? '').trim(),
+    correo: String(row.correo ?? '').trim().toLowerCase() || null,
   }
-  for (const k of DAY_KEYS) payload[k] = rec[k] ?? ''
-  for (const k of EXTRA_KEYS) payload[k] = parseEuroField(rec[k])
+  for (const k of DAY_KEYS) payload[k] = row[k] ?? ''
+  for (const k of EXTRA_KEYS) payload[k] = parseEuroField(row[k])
+  if (includeRates) {
+    const rates = workerRateProfile(row)
+    payload.tarifa_finde = rates.finde
+    payload.tarifa_miercoles = rates.miercoles
+  }
   return payload
 }
 
@@ -53,11 +73,22 @@ function normalizePlanillaRow(r) {
     if (v == null || v === '') o[k] = ''
     else o[k] = String(v)
   }
+  const rates = workerRateProfile(r)
+  o.tarifa_finde = String(rates.finde)
+  o.tarifa_miercoles = String(rates.miercoles)
   return o
+}
+
+function planillaCsvRowToPayload(rec) {
+  return rowPayload(rec, true)
 }
 
 function planillaRowHasExtrasColumns(r) {
   return Boolean(r && Object.prototype.hasOwnProperty.call(r, 'nomina_event_euros'))
+}
+
+function planillaRowHasRateColumns(r) {
+  return Boolean(r && Object.prototype.hasOwnProperty.call(r, 'tarifa_finde'))
 }
 
 export default function AdminPlanillaPanel() {
@@ -72,8 +103,8 @@ export default function AdminPlanillaPanel() {
   const [eventWorkersCache, setEventWorkersCache] = useState([])
   const [punchModal, setPunchModal] = useState(null)
   const [adminSection, setAdminSection] = useState('celdas')
-  const [showPastPlanillaDays, setShowPastPlanillaDays] = useState(false)
-  const [showFuturePlanillaDays, setShowFuturePlanillaDays] = useState(false)
+  const [showPastPlanillaDays, setShowPastPlanillaDays] = useState(true)
+  const [showFuturePlanillaDays, setShowFuturePlanillaDays] = useState(true)
   const todayIso = todayIsoLocal()
   const planillaGridDays = useMemo(() => [...eachPlanillaGridDateISO()], [])
   const { past: pastPlanillaDays, future: futurePlanillaDays } = useMemo(
@@ -92,8 +123,8 @@ export default function AdminPlanillaPanel() {
   const [importBusy, setImportBusy] = useState(false)
 
   const refresh = useCallback(async (opts = {}) => {
-    const { keepUserMessage = false } = opts
-    setLoading(true)
+    const { keepUserMessage = false, silent = false } = opts
+    if (!silent) setLoading(true)
     if (!keepUserMessage) setMsg(null)
     const { data, error } = await supabase
       .from('rocio_horario_planilla')
@@ -169,14 +200,23 @@ export default function AdminPlanillaPanel() {
     const planillaExtrasMissing = Boolean(
       raw.length && !planillaRowHasExtrasColumns(raw[0]),
     )
+    const planillaRatesMissing = Boolean(
+      raw.length && !planillaRowHasRateColumns(raw[0]),
+    )
     if (planillaExtrasMissing) {
       setMsg({
         type: 'error',
         text:
-          'La tabla en Supabase no tiene las columnas de nómina/gasoil/parking. Ejecuta en el SQL Editor el archivo scripts/supabase_planilla_extras.sql (o el bloque ALTER de scripts/supabase_rocio_horario_tables.sql) y luego NOTIFY pgrst; recarga la app.',
+          'La tabla en Supabase no tiene las columnas de nómina/gasoil/incentivo. Ejecuta en el SQL Editor el archivo scripts/supabase_planilla_extras.sql (o el bloque ALTER de scripts/supabase_rocio_horario_tables.sql) y luego NOTIFY pgrst; recarga la app.',
+      })
+    } else if (planillaRatesMissing) {
+      setMsg({
+        type: 'error',
+        text:
+          'Faltan las columnas de tarifa (Vie–Dom / miércoles). Ejecuta en Supabase el archivo scripts/supabase_planilla_tarifas.sql y recarga la app.',
       })
     }
-    return { planillaExtrasMissing }
+    return { planillaExtrasMissing, planillaRatesMissing }
   }, [])
 
   useEffect(() => {
@@ -195,14 +235,11 @@ export default function AdminPlanillaPanel() {
     )
   }
 
-  async function saveRow(row) {
-    setBusy(true)
-    setMsg(null)
-    const payload = { nombre: String(row.nombre ?? '').trim() }
-    payload.correo = String(row.correo ?? '').trim().toLowerCase() || null
-    for (const k of DAY_KEYS) payload[k] = row[k] ?? ''
-    for (const k of EXTRA_KEYS) payload[k] = parseEuroField(row[k])
-
+  async function persistOne(row, includeRates = true) {
+    const payload = rowPayload(row, includeRates)
+    if (!payload.nombre) {
+      return { ok: false, error: 'El nombre no puede estar vacío.' }
+    }
     let err
     let savedRows = null
     if (row.id) {
@@ -212,76 +249,135 @@ export default function AdminPlanillaPanel() {
         .eq('id', row.id)
         .select('*'))
     } else {
-      if (!payload.nombre) {
-        setBusy(false)
-        setMsg({ type: 'error', text: 'El nombre no puede estar vacío.' })
-        return
-      }
       ;({ data: savedRows, error: err } = await supabase
         .from('rocio_horario_planilla')
         .insert(payload)
         .select('*'))
     }
-    setBusy(false)
-    if (err) {
-      setMsg({ type: 'error', text: friendlySupabaseError(err) })
-      return
+    if (err && includeRates && isMissingColumnError(err)) {
+      return persistOne(row, false)
     }
-    const saved = savedRows?.[0]
-    if (saved) {
-      for (const k of EXTRA_KEYS) {
-        const want = payload[k]
-        if (want == null) continue
-        if (!(k in saved)) {
-          setMsg({
-            type: 'error',
-            text:
-              'El guardado no devuelve las columnas de € (nómina/gasoil/parking). Ejecuta scripts/supabase_planilla_extras.sql en Supabase y recarga el esquema (NOTIFY pgrst).',
-          })
-          await refresh({ keepUserMessage: true })
-          return
-        }
-        const got = saved[k]
-        const nw = Number(want)
-        const ng = Number(got)
-        const close =
-          Number.isFinite(nw) &&
-          Number.isFinite(ng) &&
-          Math.abs(nw - ng) < 0.009
-        if (!close) {
-          setMsg({
-            type: 'error',
-            text: `No se ha podido confirmar el campo ${k} tras guardar. Revisa la base de datos y el SQL de columnas.`,
-          })
-          await refresh({ keepUserMessage: true })
-          return
-        }
-      }
+    if (err) return { ok: false, error: friendlySupabaseError(err) }
+    return { ok: true, saved: savedRows?.[0], includeRates }
+  }
+
+  async function saveRow(row) {
+    setBusy(true)
+    setMsg(null)
+    const result = await persistOne(row)
+    setBusy(false)
+    if (!result.ok) {
+      setMsg({ type: 'error', text: result.error })
+      return
     }
     const rmeta = await refresh({ keepUserMessage: true })
     if (!rmeta?.planillaExtrasMissing) {
-      setMsg({ type: 'ok', text: 'Guardado.' })
+      setMsg({
+        type: 'ok',
+        text: result.includeRates
+          ? 'Guardado.'
+          : 'Guardado (sin tarifas: ejecuta en Supabase scripts/supabase_planilla_tarifas.sql).',
+      })
     }
   }
 
-  async function deleteRow(id) {
-    if (!id || !window.confirm('¿Quitar esta fila de la planilla?')) return
+  async function saveAllRows() {
+    const toSave = rows.filter((r) => String(r.nombre ?? '').trim())
+    if (!toSave.length) {
+      setMsg({ type: 'error', text: 'No hay filas con nombre para guardar.' })
+      return
+    }
+    setBusy(true)
+    setMsg(null)
+    let ok = 0
+    let ratesSkipped = false
+    for (const row of toSave) {
+      const result = await persistOne(row)
+      if (!result.ok) {
+        setBusy(false)
+        setMsg({
+          type: 'error',
+          text: `Error al guardar «${String(row.nombre).trim()}»: ${result.error}. Se han guardado ${ok} fila(s) antes.`,
+        })
+        await refresh({ keepUserMessage: true })
+        return
+      }
+      if (!result.includeRates) ratesSkipped = true
+      ok += 1
+    }
+    setBusy(false)
+    const rmeta = await refresh({ keepUserMessage: true })
+    if (!rmeta?.planillaExtrasMissing) {
+      setMsg({
+        type: 'ok',
+        text: ratesSkipped
+          ? `Guardados ${ok} trabajadores (sin tarifas: ejecuta scripts/supabase_planilla_tarifas.sql).`
+          : `Guardados ${ok} trabajadores.`,
+      })
+    }
+  }
+
+  async function deleteRow(row) {
+    const nombre = String(row?.nombre ?? '').trim() || 'esta fila'
+    if (
+      !window.confirm(
+        `¿Quitar a ${nombre} de la planilla? Luego puedes añadir otro con «+ Añadir trabajador».`,
+      )
+    )
+      return
+    if (!row?.id) {
+      setRows((list) => list.filter((r) => r !== row))
+      setMsg({ type: 'ok', text: `${nombre} quitado.` })
+      return
+    }
     setBusy(true)
     const { error } = await supabase
       .from('rocio_horario_planilla')
       .delete()
-      .eq('id', id)
+      .eq('id', row.id)
     setBusy(false)
     if (error) {
       setMsg({ type: 'error', text: friendlySupabaseError(error) })
       return
     }
-    setMsg({ type: 'ok', text: 'Fila eliminada.' })
+    setMsg({ type: 'ok', text: `${nombre} quitado.` })
     refresh()
   }
 
   function addRow() {
     setRows((r) => [...r, { ...emptyRow(), id: null }])
+  }
+
+  async function replacePlanillaWithPayloads(payloads, okText) {
+    setImportBusy(true)
+    setMsg(null)
+    const dummyId = '00000000-0000-0000-0000-000000000000'
+    const { error: delErr } = await supabase
+      .from('rocio_horario_planilla')
+      .delete()
+      .neq('id', dummyId)
+    if (delErr) {
+      setImportBusy(false)
+      setMsg({ type: 'error', text: friendlySupabaseError(delErr) })
+      return false
+    }
+
+    const chunk = 80
+    for (let i = 0; i < payloads.length; i += chunk) {
+      const batch = payloads.slice(i, i + chunk)
+      const { error } = await supabase.from('rocio_horario_planilla').insert(batch)
+      if (error) {
+        setImportBusy(false)
+        setMsg({ type: 'error', text: friendlySupabaseError(error) })
+        await refresh()
+        return false
+      }
+    }
+    setImportBusy(false)
+    setImportCsv('')
+    setMsg({ type: 'ok', text: okText })
+    refresh()
+    return true
   }
 
   async function replacePlanillaFromCsv() {
@@ -296,7 +392,7 @@ export default function AdminPlanillaPanel() {
       setMsg({
         type: 'error',
         text:
-          'No se ha reconocido ninguna fila válida. Usa nombre + 22 columnas (d01_a…d11_b) + correo, o cabeceras con nombres d01_a, d01_b, …',
+          `No se ha reconocido ninguna fila válida. Usa nombre + ${DAY_KEYS.length} celdas de horario + correo, o cabeceras d01_a, d01_b, …`,
       })
       return
     }
@@ -307,35 +403,26 @@ export default function AdminPlanillaPanel() {
     )
       return
 
-    setImportBusy(true)
-    setMsg(null)
-    const dummyId = '00000000-0000-0000-0000-000000000000'
-    const { error: delErr } = await supabase
-      .from('rocio_horario_planilla')
-      .delete()
-      .neq('id', dummyId)
-    if (delErr) {
-      setImportBusy(false)
-      setMsg({ type: 'error', text: friendlySupabaseError(delErr) })
-      return
-    }
+    await replacePlanillaWithPayloads(
+      valid.map(planillaCsvRowToPayload),
+      `Planilla sustituida (${valid.length} filas).`,
+    )
+  }
 
-    const payloads = valid.map(planillaCsvRowToPayload)
-    const chunk = 80
-    for (let i = 0; i < payloads.length; i += chunk) {
-      const batch = payloads.slice(i, i + chunk)
-      const { error } = await supabase.from('rocio_horario_planilla').insert(batch)
-      if (error) {
-        setImportBusy(false)
-        setMsg({ type: 'error', text: friendlySupabaseError(error) })
-        await refresh()
-        return
-      }
-    }
-    setImportBusy(false)
-    setImportCsv('')
-    setMsg({ type: 'ok', text: `Planilla sustituida (${valid.length} filas).` })
-    refresh()
+  async function loadAgostoRoster() {
+    if (
+      !window.confirm(
+        `Se borrarán TODAS las filas actuales (${rows.length}) y se cargarán ${AGOSTO_WORKER_NAMES.length} trabajadores (14–19 ago, horario a 0). ¿Continuar?`,
+      )
+    )
+      return
+    const payloads = AGOSTO_WORKER_NAMES.map((nombre) =>
+      planillaCsvRowToPayload({ ...emptyRocioPlanillaPayload(), nombre }),
+    )
+    await replacePlanillaWithPayloads(
+      payloads,
+      `Listado cargado: ${payloads.length} trabajadores, horario a 0.`,
+    )
   }
 
   const magicSet = useMemo(() => new Set(magicLoginEmails), [magicLoginEmails])
@@ -360,6 +447,13 @@ export default function AdminPlanillaPanel() {
   return (
     <section className="card admin-card">
       <p className="label-up">Planilla y fichajes (Supabase)</p>
+      <p className="muted small">
+        {PAY_EVENT_EL_ROCIO.label} · {PAY_EVENT_EL_ROCIO.dateFrom} →{' '}
+        {PAY_EVENT_EL_ROCIO.dateTo}
+      </p>
+      {msg && (
+        <p className={`hint ${msg.type === 'error' ? 'error' : 'ok'}`}>{msg.text}</p>
+      )}
 
       <div className="tabs-bar admin-planilla-tabs" role="tablist">
         <button
@@ -390,10 +484,52 @@ export default function AdminPlanillaPanel() {
           eventWorkers={eventWorkersCache}
           loginEmailRecords={loginEmailRecords}
           punchByEmail={punchByEmail}
-          onCorregir={(email, nombre) => setPunchModal({ email, nombre })}
+          onHoursSaved={() => refresh({ silent: true, keepUserMessage: true })}
         />
       ) : (
         <>
+          <div className="planilla-save-all-bar">
+            <button
+              type="button"
+              disabled={busy || importBusy || rows.length === 0}
+              onClick={saveAllRows}
+            >
+              {busy ? 'Guardando…' : 'Guardar todos los cambios'}
+            </button>
+            <p className="muted small">
+              Cambia tarifas, nómina, gasoil e incentivo en todas las filas y pulsa este
+              botón una vez.
+            </p>
+          </div>
+          <div className="card subpanel planilla-import-block">
+            <p className="label-up">Listado 14–19 agosto (horario a 0)</p>
+            <p className="muted small">
+              Carga los {AGOSTO_WORKER_NAMES.length} nombres con celdas vacías. No hace
+              falta horario ni correo: las horas se eligen en{' '}
+              <strong>Turnos picados</strong> (entrada y salida de cada día).
+            </p>
+            <p className="muted small">
+              <strong>Tarifa:</strong> Vie–Dom 10 o 12 €/h (elige en cada fila). Lun y mar:
+              10 €/h todos. Miércoles: 12 o 15 €/h (elige en cada fila). Cambia todas las
+              filas y pulsa <strong>Guardar todos</strong>.
+            </p>
+            <p className="muted small">
+              <strong>Fijo:</strong> en <strong>Nómina €</strong> pon el sueldo que ya cobra
+              por nómina (se resta del bruto de horas). Si trabaja de más, la diferencia
+              sale en mano; si de menos, horas en mano = 0. <strong>Gasoil</strong> e{' '}
+              <strong>Incentivo</strong> se suman al total.
+            </p>
+            <button
+              type="button"
+              className="secondary"
+              disabled={busy || importBusy}
+              onClick={loadAgostoRoster}
+            >
+              {importBusy
+                ? 'Cargando…'
+                : `Cargar ${AGOSTO_WORKER_NAMES.length} trabajadores (todo a 0)`}
+            </button>
+          </div>
           <div className="card subpanel planilla-import-block">
             <p className="label-up">Importar planilla (CSV ancha)</p>
             <textarea
@@ -457,21 +593,25 @@ export default function AdminPlanillaPanel() {
                 <tr>
                   <th className="planilla-th-nombre">Nombre</th>
                   <th className="planilla-th-correo">Correo (enlace)</th>
+                  {RATE_KEYS.map((rk) => (
+                    <th
+                      key={rk}
+                      className="planilla-th-rate"
+                      title={ROCIO_PLANILLA_RATE_TITLES[rk]}
+                    >
+                      {ROCIO_PLANILLA_RATE_LABELS[rk] ?? rk}
+                    </th>
+                  ))}
                   {EXTRA_KEYS_UI.map((ek) => (
                     <th
                       key={ek}
                       className="planilla-th-euro"
-                      title={
-                        ek === 'nomina_event_euros'
-                          ? '€ que ya van por nómina del evento (se restan del bruto horas)'
-                          : undefined
-                      }
+                      title={ROCIO_PLANILLA_EXTRA_TITLES[ek]}
                     >
                       {ROCIO_PLANILLA_EXTRA_LABELS[ek] ?? ek}
                     </th>
                   ))}
                   {headerDays}
-                  <th className="planilla-th-actions" />
                 </tr>
               </thead>
               <tbody>
@@ -487,6 +627,24 @@ export default function AdminPlanillaPanel() {
                             : patchDraft(row, { nombre: e.target.value })
                         }
                       />
+                      <div className="planilla-nombre-actions">
+                        <button
+                          type="button"
+                          className="secondary btn-xs"
+                          disabled={busy}
+                          onClick={() => saveRow(row)}
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary btn-xs danger-text"
+                          disabled={busy}
+                          onClick={() => deleteRow(row)}
+                        >
+                          Quitar
+                        </button>
+                      </div>
                     </td>
                     <td className="planilla-td-correo">
                       <div className="planilla-email-stack">
@@ -538,6 +696,32 @@ export default function AdminPlanillaPanel() {
                         />
                       </div>
                     </td>
+                    {RATE_KEYS.map((rk) => {
+                      const opts =
+                        rk === 'tarifa_finde'
+                          ? TARIFA_FINDE_OPTIONS
+                          : TARIFA_MIERCOLES_OPTIONS
+                      const cur = String(row[rk] ?? opts[0])
+                      return (
+                        <td key={rk} className="planilla-td-rate">
+                          <select
+                            className="table-input planilla-rate-select"
+                            value={opts.includes(Number(cur)) ? cur : String(opts[0])}
+                            onChange={(e) =>
+                              row.id
+                                ? patchLocal(row.id, rk, e.target.value)
+                                : patchDraft(row, { [rk]: e.target.value })
+                            }
+                          >
+                            {opts.map((n) => (
+                              <option key={n} value={String(n)}>
+                                {n} €
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )
+                    })}
                     {EXTRA_KEYS_UI.map((ek) => (
                       <td key={ek} className="planilla-td-euro">
                         <input
@@ -570,39 +754,25 @@ export default function AdminPlanillaPanel() {
                         />
                       </td>
                     ))}
-                    <td className="planilla-actions">
-                      <button
-                        type="button"
-                        className="secondary btn-xs"
-                        disabled={busy}
-                        onClick={() => saveRow(row)}
-                      >
-                        Guardar
-                      </button>
-                      {row.id ? (
-                        <button
-                          type="button"
-                          className="secondary btn-xs danger-text"
-                          disabled={busy}
-                          onClick={() => deleteRow(row.id)}
-                        >
-                          Quitar
-                        </button>
-                      ) : null}
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <button type="button" className="secondary" disabled={busy} onClick={addRow}>
-            + Añadir trabajador
-          </button>
+          <div className="planilla-save-all-bar">
+            <button type="button" className="secondary" disabled={busy} onClick={addRow}>
+              + Añadir trabajador
+            </button>
+            <button type="button" disabled={busy || importBusy} onClick={saveAllRows}>
+              {busy ? 'Guardando…' : 'Guardar todos'}
+            </button>
+          </div>
+          <p className="muted small">
+            Si alguien no viene: <strong>Quitar</strong> (junto al nombre) y luego{' '}
+            <strong>+ Añadir trabajador</strong> con el sustituto. También puedes cambiar
+            solo el nombre. Al final pulsa <strong>Guardar todos</strong>.
+          </p>
         </>
-      )}
-
-      {msg && (
-        <p className={`hint ${msg.type === 'error' ? 'error' : 'ok'}`}>{msg.text}</p>
       )}
 
       <PlanillaFichajesModal

@@ -7,10 +7,10 @@
 
 /** @type {{ id: string, label: string, dateFrom: string, dateTo: string, currency: string, segments: PaySegment[] }} */
 export const PAY_EVENT_EL_ROCIO = {
-  id: 'el_rocio_2026',
-  label: 'El Rocío 2026 — La Tata',
-  dateFrom: '2026-05-15',
-  dateTo: '2026-05-26',
+  id: 'el_rocio_2026_agosto',
+  label: 'El Rocío 2026 — La Tata (14–19 ago)',
+  dateFrom: '2026-08-14',
+  dateTo: '2026-08-19',
   currency: 'EUR',
   segments: [],
 }

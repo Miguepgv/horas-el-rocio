@@ -4,6 +4,8 @@
 alter table public.rocio_horario_planilla
   add column if not exists nomina_event_euros numeric,
   add column if not exists gasoil_euros numeric,
-  add column if not exists parking_euros numeric;
+  add column if not exists parking_euros numeric,
+  add column if not exists tarifa_finde numeric,
+  add column if not exists tarifa_miercoles numeric;
 
 notify pgrst, 'reload schema';

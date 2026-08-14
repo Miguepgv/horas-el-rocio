@@ -53,7 +53,9 @@ GRANT ALL ON TABLE public.rocio_horario_planilla TO authenticated, service_role;
 ALTER TABLE public.rocio_horario_planilla
   ADD COLUMN IF NOT EXISTS nomina_event_euros numeric,
   ADD COLUMN IF NOT EXISTS gasoil_euros numeric,
-  ADD COLUMN IF NOT EXISTS parking_euros numeric;
+  ADD COLUMN IF NOT EXISTS parking_euros numeric,
+  ADD COLUMN IF NOT EXISTS tarifa_finde numeric,
+  ADD COLUMN IF NOT EXISTS tarifa_miercoles numeric;
 
 -- ---------- horario_avisos ----------
 CREATE TABLE IF NOT EXISTS public.horario_avisos (

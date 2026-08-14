@@ -27,14 +27,19 @@ export function punchFetchWindowIso() {
  * @param {string} email
  * @param {Array<{ email?: string|null, auth_user_id?: string|null }>} eventWorkers
  */
+/**
+ * user_id de fichajes: correo real, o clave planilla:id (sin correo).
+ */
 export async function resolvePrimaryPunchUserId(email, eventWorkers) {
-  const em = normEmail(email)
+  const em = String(email ?? '').trim()
   if (!em) return null
-  const w = (eventWorkers ?? []).find(
-    (x) => normEmail(x.email) === em && x.auth_user_id,
-  )
-  if (w?.auth_user_id) return w.auth_user_id
-  return deterministicUserIdFromEmail(em)
+  if (!em.toLowerCase().startsWith('planilla:')) {
+    const w = (eventWorkers ?? []).find(
+      (x) => normEmail(x.email) === normEmail(em) && x.auth_user_id,
+    )
+    if (w?.auth_user_id) return w.auth_user_id
+  }
+  return deterministicUserIdFromEmail(em.toLowerCase())
 }
 
 /**

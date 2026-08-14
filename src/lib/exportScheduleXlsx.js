@@ -1,6 +1,8 @@
 import {
   ROCIO_PLANILLA_DAY_KEYS as DAY_KEYS,
   ROCIO_PLANILLA_EXTRA_KEYS_UI as EXTRA_KEYS_UI,
+  ROCIO_PLANILLA_RATE_KEYS as RATE_KEYS,
+  ROCIO_PLANILLA_RATE_LABELS,
 } from './rocioPlanillaKeys.js'
 import { slotIndexForPlanillaDayKey } from './feriaDayView.js'
 import { planillaColumnHeader } from './planillaDayHeaders.js'
@@ -8,7 +10,7 @@ import { planillaColumnHeader } from './planillaDayHeaders.js'
 const EURO_LABELS = {
   nomina_event_euros: 'Nómina €',
   gasoil_euros: 'Gasoil €',
-  parking_euros: 'Parking €',
+  parking_euros: 'Incentivo €',
 }
 
 function stampYmd() {
@@ -28,7 +30,7 @@ async function loadXlsx() {
 }
 
 /**
- * Planilla ancha tal como en administración (nombre, correo, €, celdas d01_a…d11_b).
+ * Planilla ancha tal como en administración (nombre, correo, €, celdas de cada día).
  * @param {Array<Record<string, unknown>>} rows
  */
 export async function downloadPlanillaHorarioXlsx(rows, opts = {}) {
@@ -40,12 +42,18 @@ export async function downloadPlanillaHorarioXlsx(rows, opts = {}) {
   const header = [
     'Nombre',
     'Correo',
+    ...RATE_KEYS.map((k) => ROCIO_PLANILLA_RATE_LABELS[k] ?? k),
     ...EXTRA_KEYS_UI.map((k) => EURO_LABELS[k] ?? k),
     ...dayHeaders,
   ]
   const body = (rows ?? []).map((r) => [
     String(r.nombre ?? '').trim(),
     String(r.correo ?? '').trim(),
+    ...RATE_KEYS.map((k) => {
+      const v = r[k]
+      if (v == null || v === '') return ''
+      return String(v)
+    }),
     ...EXTRA_KEYS_UI.map((k) => {
       const v = r[k]
       if (v == null || v === '') return ''
@@ -58,7 +66,7 @@ export async function downloadPlanillaHorarioXlsx(rows, opts = {}) {
   ws['!cols'] = header.map((_, i) => {
     if (i === 0) return { wch: 22 }
     if (i === 1) return { wch: 30 }
-    if (i >= 2 && i <= 4) return { wch: 11 }
+    if (i >= 2 && i <= 6) return { wch: 11 }
     return { wch: 7 }
   })
   const wb = XLSX.utils.book_new()

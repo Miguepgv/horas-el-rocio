@@ -1,7 +1,21 @@
+import { ROCIO_PLANILLA_GRID_DAY_COUNT } from './rocioPlanillaSchedule.js'
+
 export const ROCIO_PLANILLA_DAY_KEYS = []
-for (let i = 1; i <= 11; i++) {
+for (let i = 1; i <= ROCIO_PLANILLA_GRID_DAY_COUNT; i++) {
   const p = String(i).padStart(2, '0')
   ROCIO_PLANILLA_DAY_KEYS.push(`d${p}_a`, `d${p}_b`)
+}
+
+export const ROCIO_PLANILLA_RATE_KEYS = ['tarifa_finde', 'tarifa_miercoles']
+
+export const ROCIO_PLANILLA_RATE_LABELS = {
+  tarifa_finde: 'Vie–Dom €/h',
+  tarifa_miercoles: 'Mié €/h',
+}
+
+export const ROCIO_PLANILLA_RATE_TITLES = {
+  tarifa_finde: 'Viernes, sábado y domingo: 10 o 12 €/h según la persona.',
+  tarifa_miercoles: 'Miércoles: 12 o 15 €/h según la persona. Lunes y martes son 10 €/h para todos.',
 }
 
 export const ROCIO_PLANILLA_EXTRA_KEYS = [
@@ -16,13 +30,22 @@ export const ROCIO_PLANILLA_EXTRA_KEYS_UI = ROCIO_PLANILLA_EXTRA_KEYS
 export const ROCIO_PLANILLA_EXTRA_LABELS = {
   nomina_event_euros: 'Nómina €',
   gasoil_euros: 'Gasoil €',
-  parking_euros: 'Parking €',
+  parking_euros: 'Incentivo €',
+}
+
+export const ROCIO_PLANILLA_EXTRA_TITLES = {
+  nomina_event_euros:
+    'Si es fijo: pon aquí el sueldo que ya va por nómina. Se RESTA del bruto de horas. Si las horas valen más, la diferencia se paga en mano. Si valen menos, horas en mano = 0. Las horas las metes tú en Turnos picados (no hace falta que piquen).',
+  gasoil_euros: 'Se SUMA al total a pagar (gasoil).',
+  parking_euros: 'Se SUMA al total a pagar (incentivo).',
 }
 
 export function emptyRocioPlanillaPayload() {
   const o = {
     nombre: '',
     correo: '',
+    tarifa_finde: '10',
+    tarifa_miercoles: '12',
     nomina_event_euros: '',
     gasoil_euros: '',
     parking_euros: '',

@@ -1,5 +1,5 @@
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
-import { eurosForIntervalMs } from './elRocioRates.js'
+import { eurosForIntervalMs, rateForWeekday, workerRateProfile } from './elRocioRates.js'
 import { eachPlanillaGridDateISO } from './rocioPlanillaSchedule.js'
 
 export function weekdayMonSunFromDate(d) {
@@ -23,14 +23,8 @@ function isNoPay(p) {
   return Boolean(p?.no_pay)
 }
 
-export function applicableHourlyRate(weekdayMonSun) {
-  const segs = [...PAY_EVENT_EL_ROCIO.segments].sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  )
-  for (const s of segs) {
-    if (s.weekdays.includes(weekdayMonSun)) return Number(s.eurPerHour) || 0
-  }
-  return 0
+export function applicableHourlyRate(weekdayMonSun, profile) {
+  return rateForWeekday(weekdayMonSun, profile)
 }
 
 export function eachEventDateISO() {
@@ -43,23 +37,29 @@ export function eachEventDateISO() {
   return out
 }
 
-/** Días de cobro / fichajes alineados con la planilla (d01…d11) + días con picadas fuera de la rejilla. */
+/** Días de cobro / fichajes alineados con la planilla + picadas dentro del periodo. */
 export function eachCobroDisplayDateISO(punches) {
   const dates = [...eachPlanillaGridDateISO()]
   const seen = new Set(dates)
   const from = PAY_EVENT_EL_ROCIO.dateFrom
+  const to = PAY_EVENT_EL_ROCIO.dateTo
   if (from && !seen.has(from)) {
     seen.add(from)
     dates.push(from)
   }
+  const inPeriod = (iso) => {
+    if (from && iso < from) return false
+    if (to && iso > to) return false
+    return true
+  }
   for (const p of punches ?? []) {
     const iso = formatDateLocalISO(new Date(p.punched_at))
-    if (!seen.has(iso)) {
+    if (inPeriod(iso) && !seen.has(iso)) {
       seen.add(iso)
       dates.push(iso)
     }
     const startIso = paidShiftStartDayIso(new Date(p.punched_at))
-    if (p.punch_type === 'in' && !seen.has(startIso)) {
+    if (p.punch_type === 'in' && inPeriod(startIso) && !seen.has(startIso)) {
       seen.add(startIso)
       dates.push(startIso)
     }
@@ -245,18 +245,18 @@ export function workedHoursForDay(punches, dayIso) {
   return hours
 }
 
-export function paidEurosByStartDay(punches, dayIso) {
+export function paidEurosByStartDay(punches, dayIso, profile) {
   let euros = 0
   for (const [a, b] of paidInOutPairs(punches)) {
     if (paidShiftStartDayIso(a) !== dayIso) continue
-    euros += eurosForIntervalMs(a, b)
+    euros += eurosForIntervalMs(a, b, profile)
   }
   return euros
 }
 
 /** @deprecated Usar paidEurosByStartDay */
-export function paidEurosOverlappingDay(punches, dayIso) {
-  return paidEurosByStartDay(punches, dayIso)
+export function paidEurosOverlappingDay(punches, dayIso, profile) {
+  return paidEurosByStartDay(punches, dayIso, profile)
 }
 
 const WD_SHORT = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -273,7 +273,8 @@ export function formatHoursMinutes(h) {
   return `${hh}h ${String(mm).padStart(2, '0')}m`
 }
 
-export function buildDailySummary(punches) {
+export function buildDailySummary(punches, profile) {
+  const rates = workerRateProfile(profile)
   const days = eachCobroDisplayDateISO(punches)
   const rows = []
   let totalHours = 0
@@ -282,8 +283,8 @@ export function buildDailySummary(punches) {
     const d = parseLocalDate(iso)
     const wd = weekdayMonSunFromDate(d)
     const h = workedPaidHoursByStartDay(punches, iso)
-    const gross = paidEurosByStartDay(punches, iso)
-    const rate = h > 0 ? gross / h : applicableHourlyRate(wd)
+    const gross = paidEurosByStartDay(punches, iso, rates)
+    const rate = h > 0 ? gross / h : applicableHourlyRate(wd, rates)
     totalHours += h
     totalGross += gross
     rows.push({

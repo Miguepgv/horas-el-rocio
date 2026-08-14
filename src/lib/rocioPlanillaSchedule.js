@@ -1,9 +1,20 @@
-/** Primer día de la rejilla planilla (d01 = este día). Debe coincidir con las columnas d01_a…d11_b. */
-export const ROCIO_PLANILLA_GRID_FIRST_DAY = '2026-05-16'
+import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 
-export const ROCIO_PLANILLA_GRID_DAY_COUNT = 11
+function countInclusiveDays(fromIso, toIso) {
+  const a = new Date(`${fromIso}T12:00:00`)
+  const b = new Date(`${toIso}T12:00:00`)
+  return Math.round((b - a) / 86_400_000) + 1
+}
 
-/** Fechas ISO de cada columna día (d01…d11), alineadas con `planillaRowToSlots`. */
+/** Primer día de la rejilla planilla (d01 = este día). */
+export const ROCIO_PLANILLA_GRID_FIRST_DAY = PAY_EVENT_EL_ROCIO.dateFrom
+
+export const ROCIO_PLANILLA_GRID_DAY_COUNT = countInclusiveDays(
+  PAY_EVENT_EL_ROCIO.dateFrom,
+  PAY_EVENT_EL_ROCIO.dateTo,
+)
+
+/** Fechas ISO de cada columna día (d01…), alineadas con `planillaRowToSlots`. */
 export function eachPlanillaGridDateISO(
   firstDayIso = ROCIO_PLANILLA_GRID_FIRST_DAY,
   dayCount = ROCIO_PLANILLA_GRID_DAY_COUNT,
@@ -185,7 +196,7 @@ export function planillaRowToSlots(
   firstDayIso = ROCIO_PLANILLA_GRID_FIRST_DAY,
 ) {
   const slots = []
-  for (let p = 0; p < 11; p++) {
+  for (let p = 0; p < ROCIO_PLANILLA_GRID_DAY_COUNT; p++) {
     const idx = String(p + 1).padStart(2, '0')
     const a = row[`d${idx}_a`]
     const b = row[`d${idx}_b`]

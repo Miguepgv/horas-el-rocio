@@ -1,7 +1,5 @@
+import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 import { formatDateLocalISO, weekdayMonSunFromDate } from './payCompute.js'
-
-/** Martes cierre de feria (26 may 2026): mensaje alternativo. */
-const MARTES_CIERRE_FERIA_ISO = '2026-05-26'
 
 const THANK_YOU_BY_WEEKDAY = {
   1: 'La masacre ha terminado y seguimos en pie gracias a ti. Ve a curar tus heridas de guerra y a recuperar tu humanidad. ¡Gran trabajo!',
@@ -20,6 +18,6 @@ const THANK_YOU_MARTES_CIERRE =
 export function shiftThankYouMessage(date = new Date()) {
   const iso = formatDateLocalISO(date)
   const wd = weekdayMonSunFromDate(date)
-  if (wd === 2 && iso === MARTES_CIERRE_FERIA_ISO) return THANK_YOU_MARTES_CIERRE
+  if (iso === PAY_EVENT_EL_ROCIO.dateTo) return THANK_YOU_MARTES_CIERRE
   return THANK_YOU_BY_WEEKDAY[wd] ?? THANK_YOU_BY_WEEKDAY[2]
 }

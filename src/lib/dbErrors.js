@@ -22,6 +22,15 @@ export function isMissingTableError(err) {
   return false
 }
 
+export function isMissingColumnError(err) {
+  const m = formatSupabaseErrText(err)
+  const code = typeof err === 'object' && err?.code != null ? String(err.code) : ''
+  if (code === 'PGRST204' || /PGRST204\b/i.test(m)) return true
+  if (/could not find the .+ column/i.test(m)) return true
+  if (/42703/i.test(code)) return true
+  return false
+}
+
 export function isNetworkFetchError(err) {
   const m = formatSupabaseErrText(err)
   return /failed to fetch|networkerror|load failed|network request failed/i.test(m)

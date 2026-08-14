@@ -49,6 +49,7 @@ import {
   punchBlockedMessage,
 } from '../lib/punchSequence.js'
 import { shiftThankYouMessage } from '../lib/shiftThankYouMessage.js'
+import { workerRateProfile } from '../lib/elRocioRates.js'
 
 function fmtClock(iso) {
   if (!iso) return '—'
@@ -68,11 +69,11 @@ function fmtDateEs(isoYmd) {
   })
 }
 
-function formatFichadoPlainForExport(punches, iso) {
+function formatFichadoPlainForExport(punches, iso, rates) {
   const shifts = displayShiftsForDay(punches, iso)
   const hPaid = workedPaidHoursOverlappingDay(punches, iso)
   const hNp = workedNoPayHoursOverlappingDay(punches, iso)
-  const ePaid = paidEurosOverlappingDay(punches, iso)
+  const ePaid = paidEurosOverlappingDay(punches, iso, rates)
   const avgRate = hPaid > 0 ? ePaid / hPaid : null
   const hoursLegacy = workedHoursForDay(punches, iso)
   const d = parseLocalDate(iso)
@@ -369,10 +370,19 @@ export default function InicioPage({ session, onSignOut }) {
       gasoil_euros: gasoil,
       parking_euros: parking,
       is_fixed: Boolean(base.is_fixed) || payroll > 0,
+      tarifa_finde: pl?.tarifa_finde,
+      tarifa_miercoles: pl?.tarifa_miercoles,
     }
   }, [profile, planillaExtrasRow])
 
-  const summary = useMemo(() => buildDailySummary(punches), [punches])
+  const rateProfile = useMemo(
+    () => workerRateProfile(planillaExtrasRow),
+    [planillaExtrasRow],
+  )
+  const summary = useMemo(
+    () => buildDailySummary(punches, rateProfile),
+    [punches, rateProfile],
+  )
   const extras = useMemo(
     () => fixedWorkerExtras(profileForPay, summary.totalGross),
     [profileForPay, summary.totalGross],
@@ -449,10 +459,10 @@ export default function InicioPage({ session, onSignOut }) {
           })
           .join('\n')
       }
-      const fichado = formatFichadoPlainForExport(punches, iso)
+      const fichado = formatFichadoPlainForExport(punches, iso, rateProfile)
       return { dia, previsto, fichado }
     })
-  }, [workerWeekDays, scheduleSlots, punches])
+  }, [workerWeekDays, scheduleSlots, punches, rateProfile])
 
   const downloadHorarioXlsx = useCallback(async () => {
     setPunchMsg(null)
@@ -485,7 +495,7 @@ export default function InicioPage({ session, onSignOut }) {
         {
           paidShiftsFn: paidShiftsOverlappingDay,
           hoursFn: workedPaidHoursOverlappingDay,
-          eurosFn: paidEurosOverlappingDay,
+          eurosFn: (p, iso) => paidEurosOverlappingDay(p, iso, rateProfile),
           punchesForWorker: (_w, map) => map[em] ?? [],
         },
       )
@@ -502,7 +512,7 @@ export default function InicioPage({ session, onSignOut }) {
       })
     }
     setDailyExportBusy(false)
-  }, [email, eventWorker, punches, reportDate])
+  }, [email, eventWorker, punches, reportDate, rateProfile])
 
   const summaryRowsVisible = useMemo(() => {
     const from = PAY_EVENT_EL_ROCIO.dateFrom
@@ -839,7 +849,7 @@ export default function InicioPage({ session, onSignOut }) {
                     const dayRawPunches = punchesForCalendarDay(punches, iso)
                     const hPaid = workedPaidHoursOverlappingDay(punches, iso)
                     const hNp = workedNoPayHoursOverlappingDay(punches, iso)
-                    const ePaid = paidEurosOverlappingDay(punches, iso)
+                    const ePaid = paidEurosOverlappingDay(punches, iso, rateProfile)
                     const avgRate = hPaid > 0 ? ePaid / hPaid : null
                     const hoursLegacy = workedHoursForDay(punches, iso)
                     const startDay = new Date()
@@ -955,6 +965,7 @@ export default function InicioPage({ session, onSignOut }) {
                   <tr>
                     <th>Día</th>
                     <th>Horas</th>
+                    <th>€/h</th>
                     <th>€ estim.</th>
                   </tr>
                 </thead>
@@ -965,6 +976,7 @@ export default function InicioPage({ session, onSignOut }) {
                         {r.weekdayLabel} {fmtDateEs(r.dateIso)}
                       </td>
                       <td>{r.hours > 0 ? formatHoursMinutes(r.hours) : '—'}</td>
+                      <td>{r.rate > 0 ? `${r.rate.toFixed(0)} €` : '—'}</td>
                       <td>{r.gross > 0 ? `${r.gross.toFixed(2)} €` : '—'}</td>
                     </tr>
                   ))}
@@ -1010,11 +1022,11 @@ export default function InicioPage({ session, onSignOut }) {
                     ) : null}
                     {extras.parking > 0 ? (
                       <li>
-                        Parking: <strong>{extras.parking.toFixed(2)} €</strong>
+                        Incentivo: <strong>{extras.parking.toFixed(2)} €</strong>
                       </li>
                     ) : null}
                     <li className="money-total">
-                      Total a pagar (horas − nómina + gasoil + parking):{' '}
+                      Total a pagar (horas − nómina + gasoil + incentivo):{' '}
                       <strong>{extras.totalCashExtra.toFixed(2)} €</strong>
                     </li>
                   </ul>

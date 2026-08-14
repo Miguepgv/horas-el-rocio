@@ -246,7 +246,8 @@ function normHeaderCell(s) {
 }
 
 function looksLikeWideHeaderRow(parts) {
-  if (parts.length < 23) return false
+  const minCols = ROCIO_PLANILLA_DAY_KEYS.length + 2
+  if (parts.length < minCols) return false
   const joined = parts.join(' ').toLowerCase()
   if (joined.includes('@')) return false
   const f = normHeaderCell(parts[0])
@@ -254,8 +255,9 @@ function looksLikeWideHeaderRow(parts) {
 }
 
 /**
- * Planilla ancha: nombre + 22 celdas (d01_a…d11_b) + correo, o cabecera con esas columnas.
- * Opcional en cabecera: nomina_event_euros / nomina, gasoil_euros / gasoil, parking_euros / parking.
+ * Planilla ancha: nombre + celdas dXX_a/dXX_b del periodo + correo, o cabecera con esas columnas.
+ * Opcional en cabecera: nomina_event_euros / nomina, gasoil_euros / gasoil,
+ * parking_euros / parking / incentivo.
  * @returns {Array<Record<string, string>>}
  */
 export function parsePlanillaWideCsv(text) {
@@ -282,7 +284,19 @@ export function parsePlanillaWideCsv(text) {
       ['gasoil_euros', 'gasoil', 'gas_oil'].includes(h),
     )
     const idxParking = header.findIndex((h) =>
-      ['parking_euros', 'parking', 'aparcamiento'].includes(h),
+      [
+        'parking_euros',
+        'parking',
+        'aparcamiento',
+        'incentivo',
+        'incentivo_euros',
+      ].includes(h),
+    )
+    const idxFinde = header.findIndex((h) =>
+      ['tarifa_finde', 'finde', 'vie_dom', 'tarifa_fin_de'].includes(h),
+    )
+    const idxMie = header.findIndex((h) =>
+      ['tarifa_miercoles', 'miercoles', 'tarifa_mie', 'mie'].includes(h),
     )
 
     const dayIdx = Object.fromEntries(
@@ -306,6 +320,8 @@ export function parsePlanillaWideCsv(text) {
         nomina_event_euros: idxNomina >= 0 ? String(cells[idxNomina] ?? '').trim() : '',
         gasoil_euros: idxGasoil >= 0 ? String(cells[idxGasoil] ?? '').trim() : '',
         parking_euros: idxParking >= 0 ? String(cells[idxParking] ?? '').trim() : '',
+        tarifa_finde: idxFinde >= 0 ? String(cells[idxFinde] ?? '').trim() : '',
+        tarifa_miercoles: idxMie >= 0 ? String(cells[idxMie] ?? '').trim() : '',
       }
       for (const k of ROCIO_PLANILLA_DAY_KEYS) {
         const ix = dayIdx[k]
@@ -319,7 +335,7 @@ export function parsePlanillaWideCsv(text) {
 
     for (let li = dataStart; li < lines.length; li++) {
       const parts = splitCsvRow(lines[li])
-      if (parts.length < 23) continue
+      if (parts.length < ROCIO_PLANILLA_DAY_KEYS.length + 2) continue
       const nombre = parts[0].trim()
       if (!nombre) continue
       const correo = String(parts[parts.length - 1] ?? '')
@@ -333,6 +349,8 @@ export function parsePlanillaWideCsv(text) {
         nomina_event_euros: '',
         gasoil_euros: '',
         parking_euros: '',
+        tarifa_finde: '',
+        tarifa_miercoles: '',
       }
       for (let i = 0; i < ROCIO_PLANILLA_DAY_KEYS.length; i++) {
         rec[ROCIO_PLANILLA_DAY_KEYS[i]] = String(mid[i] ?? '').trim()

@@ -1,4 +1,5 @@
 import { planillaExtrasFromRow } from './planillaEuroExtras.js'
+import { planillaPunchKey } from './manualDayHours.js'
 
 function normEmail(s) {
   return String(s ?? '')
@@ -23,12 +24,19 @@ export function resolvePunchEmailForPlanillaRow(row, eventWorkers) {
   return normEmail(w?.email) || null
 }
 
-/** Correos para los que hay que cargar fichajes (planilla + plantilla + logins). */
+/** Clave de fichajes: planilla id (sin correo) o correo si no hay id. */
+export function punchLookupKeyForPlanillaRow(row, eventWorkers) {
+  const fromId = planillaPunchKey(row?.id)
+  if (fromId) return fromId
+  return resolvePunchEmailForPlanillaRow(row, eventWorkers)
+}
+
+/** Correos / claves para los que hay que cargar fichajes. */
 export function collectPunchEmails(planillaRows, eventWorkers, loginRecords) {
   const emails = new Set()
   for (const row of planillaRows ?? []) {
-    const em = resolvePunchEmailForPlanillaRow(row, eventWorkers)
-    if (em) emails.add(em)
+    const k = punchLookupKeyForPlanillaRow(row, eventWorkers)
+    if (k) emails.add(k)
   }
   for (const w of eventWorkers ?? []) {
     const em = normEmail(w.email)
@@ -65,20 +73,24 @@ export function buildFichajesWorkerEntries(
     seenPlanillaKey.add(planillaKey)
 
     const planillaCorreo = normEmail(row.correo)
-    const punchLookupEmail = resolvePunchEmailForPlanillaRow(row, eventWorkers)
-    if (punchLookupEmail) seenPunchEmail.add(punchLookupEmail)
+    const punchLookupEmail = punchLookupKeyForPlanillaRow(row, eventWorkers)
+    if (punchLookupEmail && !punchLookupEmail.startsWith('planilla:')) {
+      seenPunchEmail.add(punchLookupEmail)
+    }
 
     const ex = planillaExtrasFromRow(row)
     entries.push({
       id: planillaKey,
       nombre,
-      correo: planillaCorreo || punchLookupEmail || null,
+      correo: planillaCorreo || null,
       punchLookupEmail,
       inPlanilla: true,
-      needsCorreo: !planillaCorreo && !punchLookupEmail,
+      needsCorreo: false,
       nomina_event_euros: ex.nomina_event_euros,
       gasoil_euros: ex.gasoil_euros,
       parking_euros: ex.parking_euros,
+      tarifa_finde: row.tarifa_finde,
+      tarifa_miercoles: row.tarifa_miercoles,
     })
   }
 
@@ -118,6 +130,7 @@ export function buildFichajesWorkerEntries(
   }
 
   for (const [em, punches] of Object.entries(punchByEmail ?? {})) {
+    if (String(em).startsWith('planilla:')) continue
     const e = normEmail(em)
     if (!e || seenPunchEmail.has(e) || !punches?.length) continue
     seenPunchEmail.add(e)
@@ -141,7 +154,7 @@ export function buildFichajesWorkerEntries(
 }
 
 export function punchesForWorkerEntry(worker, punchByEmail) {
-  const em = normEmail(worker?.punchLookupEmail || worker?.correo)
-  if (!em) return []
-  return punchByEmail[em] ?? []
+  const key = worker?.punchLookupEmail || worker?.correo
+  if (!key) return []
+  return punchByEmail[key] ?? punchByEmail[normEmail(key)] ?? []
 }

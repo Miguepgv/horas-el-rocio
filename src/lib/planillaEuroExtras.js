@@ -14,7 +14,7 @@ export function planillaExtrasFromRow(row) {
   }
 }
 
-/** Desglose para pagar: bruto horas − nómina + gasoil + parking. */
+/** Desglose para pagar: bruto horas − nómina + gasoil + incentivo. */
 export function computeAdminPayout(p) {
   const brutoHoras = Number(p?.eurosHoras ?? 0)
   const nomina = Number(p?.nomina ?? 0)

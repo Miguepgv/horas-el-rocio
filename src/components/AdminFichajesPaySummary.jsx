@@ -1,7 +1,7 @@
 import { formatHoursMinutes } from '../lib/payCompute.js'
 import { computeAdminPayout } from '../lib/planillaEuroExtras.js'
 
-/** Total periodo feria en Turnos picados: bruto, nómina (resta), gasoil, parking, total a pagar. */
+/** Total periodo en Turnos picados: bruto, nómina (resta), gasoil, incentivo, total a pagar. */
 export default function AdminFichajesPaySummary({
   hours = 0,
   eurosHoras = 0,
@@ -53,7 +53,7 @@ export default function AdminFichajesPaySummary({
       ) : null}
       {pay.parking > 0 ? (
         <span className="admin-fichajes-pay-line">
-          Parking: <strong>+{pay.parking.toFixed(2)} €</strong>
+          Incentivo: <strong>+{pay.parking.toFixed(2)} €</strong>
         </span>
       ) : null}
       <span className="admin-fichajes-pay-line admin-fichajes-pay-total">
