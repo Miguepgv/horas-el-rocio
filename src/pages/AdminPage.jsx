@@ -2,7 +2,6 @@ import { lazy, Suspense, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo.jsx'
 import AdminPlanillaPanel from '../components/AdminPlanillaPanel.jsx'
-import AdminHorarioAvisos from '../components/AdminHorarioAvisos.jsx'
 
 const AdminListaEspera = lazy(() => import('../components/AdminListaEspera.jsx'))
 
@@ -34,7 +33,7 @@ export default function AdminPage({ session, onSignOut }) {
           className={adminTab === 'gestion' ? 'tab active' : 'tab'}
           onClick={() => setAdminTab('gestion')}
         >
-          Planilla y avisos
+          Planilla
         </button>
         <button
           type="button"
@@ -48,10 +47,7 @@ export default function AdminPage({ session, onSignOut }) {
       </div>
 
       {adminTab === 'gestion' ? (
-        <>
-          <AdminPlanillaPanel />
-          <AdminHorarioAvisos />
-        </>
+        <AdminPlanillaPanel />
       ) : (
         <Suspense fallback={<p className="muted">Cargando lista de espera…</p>}>
           <AdminListaEspera />

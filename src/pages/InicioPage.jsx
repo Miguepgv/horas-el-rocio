@@ -130,7 +130,6 @@ export default function InicioPage({ session, onSignOut }) {
   const [punchMsg, setPunchMsg] = useState(null)
   const [punching, setPunching] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
-  const [horarioBanner, setHorarioBanner] = useState(null)
   const [planillaExtrasRow, setPlanillaExtrasRow] = useState(null)
 
   useEffect(() => {
@@ -144,38 +143,6 @@ export default function InicioPage({ session, onSignOut }) {
       cancelled = true
     }
   }, [session])
-
-  useEffect(() => {
-    let cancelled = false
-    async function avisos() {
-      const ack = localStorage.getItem('horario_avisos_ack_ts') ?? ''
-      const em = email.trim().toLowerCase()
-      if (!em) return
-      const { data, error } = await supabase
-        .from('horario_avisos')
-        .select('id,mensaje,para_email,created_at')
-        .or(`para_email.is.null,para_email.eq.${em}`)
-        .order('created_at', { ascending: false })
-        .limit(8)
-      if (cancelled) return
-      if (error) return
-      const unseen = (data ?? []).filter(
-        (r) => !ack || String(r.created_at) > ack,
-      )
-      if (unseen.length) {
-        const last = unseen[0]
-        setHorarioBanner({
-          id: last.id,
-          text: last.mensaje,
-          createdAt: last.created_at,
-        })
-      } else setHorarioBanner(null)
-    }
-    avisos()
-    return () => {
-      cancelled = true
-    }
-  }, [email])
 
   async function reloadData(opts = {}) {
     const { keepPunchMsg = false } = opts
@@ -525,16 +492,6 @@ export default function InicioPage({ session, onSignOut }) {
     )
   }, [summary.rows])
 
-  function dismissHorarioAviso() {
-    if (horarioBanner?.createdAt) {
-      localStorage.setItem(
-        'horario_avisos_ack_ts',
-        String(horarioBanner.createdAt),
-      )
-    }
-    setHorarioBanner(null)
-  }
-
   const todayPunches = useMemo(() => {
     return punches
       .filter((p) => formatDateLocalISO(new Date(p.punched_at)) === todayIso)
@@ -588,17 +545,6 @@ export default function InicioPage({ session, onSignOut }) {
       </p>
 
       <InstallAppHint />
-
-      {horarioBanner ? (
-        <div className="banner horario-aviso-banner" role="status">
-          <p>
-            <strong>Aviso:</strong> {horarioBanner.text}
-          </p>
-          <button type="button" className="secondary btn-xs" onClick={dismissHorarioAviso}>
-            Entendido
-          </button>
-        </div>
-      ) : null}
 
       {!loadingData && !eventWorker && (
         <p className="banner roster-hint">

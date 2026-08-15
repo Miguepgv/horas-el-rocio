@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { friendlySupabaseError } from '../lib/dbErrors.js'
 import { resolvePrimaryPunchUserId } from '../lib/adminPlanillaPunches.js'
 import AdminFichajesPaySummary from './AdminFichajesPaySummary.jsx'
-import DayViewToolbar from './DayViewToolbar.jsx'
 import {
   buildFichajesWorkerEntries,
   punchesForWorkerEntry,
@@ -15,9 +14,7 @@ import {
 } from '../lib/exportDailyShiftsXlsx.js'
 import {
   isTodayIso,
-  partitionEventDays,
   todayIsoLocal,
-  visibleAdminDays,
   weekReportDayRange,
 } from '../lib/feriaDayView.js'
 import {
@@ -144,12 +141,34 @@ function ClockPair({ times, disabled, onPatch, ariaDay, label }) {
   )
 }
 
+function cloneCompleteShifts(list) {
+  return (list ?? [])
+    .filter(shiftIsComplete)
+    .map((t) => ({
+      inH: t.inH,
+      inM: t.inM ?? 0,
+      outH: t.outH,
+      outM: t.outM ?? 0,
+    }))
+}
+
+function formatTimesListLabel(list) {
+  const complete = cloneCompleteShifts(list)
+  if (!complete.length) return 'sin turnos'
+  return complete
+    .map((t) => `${formatClock(t.inH, t.inM)} → ${formatClock(t.outH, t.outM)}`)
+    .join(' · ')
+}
+
 function DayShiftEditor({
   timesList,
   disabled,
   ariaDay,
   onDraftChange,
   onPersist,
+  onCopy,
+  onPaste,
+  canPaste,
 }) {
   const list =
     timesList?.length > 0 ? timesList : [emptyShift()]
@@ -186,6 +205,7 @@ function DayShiftEditor({
   }
 
   const draftTotal = totalHoursFromShiftTimesList(list)
+  const canCopy = cloneCompleteShifts(list).length > 0
 
   return (
     <div className="manual-hours-day-stack">
@@ -224,6 +244,30 @@ function DayShiftEditor({
         >
           + Añadir turno
         </button>
+        <button
+          type="button"
+          className="secondary small"
+          disabled={!canCopy}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onCopy?.(cloneCompleteShifts(list))
+          }}
+        >
+          Copiar
+        </button>
+        <button
+          type="button"
+          className="secondary small"
+          disabled={disabled || !canPaste}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onPaste?.()
+          }}
+        >
+          Pegar
+        </button>
         {draftTotal > 0 ? (
           <span className="muted small">
             Suma turnos: <strong>{formatHoursMinutes(draftTotal)}</strong>
@@ -242,6 +286,8 @@ function WorkerDayRows({
   rates,
   savingKey,
   onChangeShifts,
+  clipboard,
+  onCopyDay,
 }) {
   const fromPunches = useMemo(() => {
     const o = {}
@@ -274,6 +320,8 @@ function WorkerDayRows({
     const selected = iso === viewDateIso
     const calendarToday = isTodayIso(iso, calendarTodayIso)
     const saving = savingKey === iso
+    const canPaste =
+      Boolean(clipboard?.timesList?.length) && clipboard.dayIso === iso
     return (
       <tr
         key={iso}
@@ -299,6 +347,15 @@ function WorkerDayRows({
             timesList={timesList}
             disabled={saving || !onChangeShifts}
             ariaDay={fmtDateEs(iso)}
+            canPaste={canPaste && Boolean(onChangeShifts)}
+            onCopy={(times) => onCopyDay?.(iso, times)}
+            onPaste={() => {
+              if (!clipboard?.timesList?.length) return
+              const next = cloneCompleteShifts(clipboard.timesList)
+              dirtyIsoRef.current.delete(iso)
+              setDraft((prev) => ({ ...prev, [iso]: next }))
+              onChangeShifts?.(iso, next)
+            }}
             onDraftChange={(next) => {
               dirtyIsoRef.current.add(iso)
               setDraft((prev) => ({ ...prev, [iso]: next }))
@@ -346,36 +403,37 @@ export default function AdminPlanillaFichajesTab({
     () => eachCobroDisplayDateISO(allPunchesFlat),
     [allPunchesFlat],
   )
-  const [showPastDays, setShowPastDays] = useState(true)
-  const [showFutureDays, setShowFutureDays] = useState(true)
   const [reportDate, setReportDate] = useState(todayIso)
   const [downloadBusy, setDownloadBusy] = useState(false)
   const [exportMsg, setExportMsg] = useState(null)
   const [savingKey, setSavingKey] = useState(null)
   const [hoursMsg, setHoursMsg] = useState(null)
+  /** { dayIso, timesList, fromName, fromWorkerId } */
+  const [clipboard, setClipboard] = useState(null)
+  const [pasteTargetId, setPasteTargetId] = useState('')
+  const [pasteBusy, setPasteBusy] = useState(false)
 
-  const { past, future } = useMemo(
-    () => partitionEventDays(allDays, reportDate),
-    [allDays, reportDate],
-  )
-
-  const visibleDays = useMemo(() => {
-    if (showPastDays || showFutureDays) {
-      return visibleAdminDays(allDays, {
-        showPast: showPastDays,
-        showFuture: showFutureDays,
-        todayIso: reportDate,
-      })
+  useEffect(() => {
+    if (!allDays.length) return
+    if (!allDays.includes(reportDate)) {
+      setReportDate(
+        allDays.includes(todayIso) ? todayIso : allDays[allDays.length - 1],
+      )
     }
-    return allDays.includes(reportDate) ? [reportDate] : []
-  }, [allDays, showPastDays, showFutureDays, reportDate])
+  }, [allDays, reportDate, todayIso])
+
+  /** Solo el día elegido (por defecto hoy). Otros días: desplegable. */
+  const visibleDays = useMemo(() => {
+    if (allDays.includes(reportDate)) return [reportDate]
+    return reportDate ? [reportDate] : []
+  }, [allDays, reportDate])
 
   const weekReportDays = useMemo(
     () =>
       weekReportDayRange(allDays, reportDate, {
-        includeFuture: showFutureDays,
+        includeFuture: false,
       }),
-    [allDays, reportDate, showFutureDays],
+    [allDays, reportDate],
   )
 
   const reportFns = useMemo(
@@ -389,8 +447,23 @@ export default function AdminPlanillaFichajesTab({
     [],
   )
 
-  const minReportDate = allDays[0] ?? todayIso
-  const maxReportDate = allDays[allDays.length - 1] ?? todayIso
+  const daySelectOptions = useMemo(() => {
+    const list = allDays.length ? [...allDays] : [todayIso]
+    if (!list.includes(todayIso)) {
+      // Hoy fuera del periodo: igual lo ofrecemos primero.
+      list.unshift(todayIso)
+    }
+    return list
+  }, [allDays, todayIso])
+
+  function dayOptionLabel(iso) {
+    const d = parseLocalDate(iso)
+    const wd = weekdayMonSunFromDate(d)
+    const base = `${weekdayShort(wd)} ${fmtDateEs(iso)}`
+    if (iso === todayIso) return `Hoy · ${base}`
+    if (iso < todayIso) return `Anterior · ${base}`
+    return `Posterior · ${base}`
+  }
 
   const workers = useMemo(
     () =>
@@ -403,16 +476,19 @@ export default function AdminPlanillaFichajesTab({
     [rows, eventWorkers, loginEmailRecords, punchByEmail],
   )
 
-  async function handleSetShifts(worker, dayIso, timesList) {
+  async function handleSetShifts(worker, dayIso, timesList, opts = {}) {
+    const { silent = false } = opts
     const key = worker.punchLookupEmail
     if (!key) {
-      setHoursMsg({
-        type: 'error',
-        text: `Guarda primero a ${worker.nombre} en Celdas horario para poder meter horas.`,
-      })
-      return
+      if (!silent) {
+        setHoursMsg({
+          type: 'error',
+          text: `Guarda primero a ${worker.nombre} en Celdas horario para poder meter horas.`,
+        })
+      }
+      return { ok: false, skipped: true }
     }
-    if ((timesList ?? []).some(shiftIsPartial)) return
+    if ((timesList ?? []).some(shiftIsPartial)) return { ok: false }
 
     const complete = (timesList ?? []).filter(shiftIsComplete)
     const had = shiftTimesListFromPunches(
@@ -420,10 +496,10 @@ export default function AdminPlanillaFichajesTab({
       dayIso,
     ).filter(shiftIsComplete)
 
-    if (complete.length === 0 && had.length === 0) return
+    if (complete.length === 0 && had.length === 0) return { ok: true, skipped: true }
 
     setSavingKey(`${worker.id}:${dayIso}`)
-    setHoursMsg(null)
+    if (!silent) setHoursMsg(null)
     const userId = await resolvePrimaryPunchUserId(key, eventWorkers)
     const result = await replaceManualShiftsForDay(
       supabase,
@@ -433,30 +509,105 @@ export default function AdminPlanillaFichajesTab({
     )
     setSavingKey(null)
     if (!result.ok) {
+      if (!silent) {
+        setHoursMsg({
+          type: 'error',
+          text: `${worker.nombre}: ${friendlySupabaseError(result.error)}`,
+        })
+      }
+      return { ok: false, error: result.error, worker }
+    }
+    if (!silent) {
+      const label = formatTimesListLabel(complete)
+      const sumLabel =
+        complete.length > 1 && result.hours
+          ? ` (suma ${formatHoursMinutes(result.hours)})`
+          : ''
+      setHoursMsg({
+        type: 'ok',
+        text: `${worker.nombre} · ${fmtDateEs(dayIso)}: ${label}${sumLabel}`,
+      })
+      await onHoursSaved?.()
+    }
+    return { ok: true, worker }
+  }
+
+  function handleCopyDay(worker, dayIso, timesList) {
+    const times = cloneCompleteShifts(timesList)
+    if (!times.length) {
       setHoursMsg({
         type: 'error',
-        text: `${worker.nombre}: ${friendlySupabaseError(result.error)}`,
+        text: 'No hay turnos completos para copiar en ese día.',
       })
       return
     }
-    const label =
-      complete.length === 0
-        ? 'sin turnos'
-        : complete
-            .map(
-              (t) =>
-                `${formatClock(t.inH, t.inM)} → ${formatClock(t.outH, t.outM)}`,
-            )
-            .join(' · ')
-    const sumLabel =
-      complete.length > 1 && result.hours
-        ? ` (suma ${formatHoursMinutes(result.hours)})`
-        : ''
+    setClipboard({
+      dayIso,
+      timesList: times,
+      fromName: worker.nombre,
+      fromWorkerId: worker.id,
+    })
+    setPasteTargetId('')
     setHoursMsg({
       type: 'ok',
-      text: `${worker.nombre} · ${fmtDateEs(dayIso)}: ${label}${sumLabel}`,
+      text: `Copiado de ${worker.nombre} · ${fmtDateEs(dayIso)}: ${formatTimesListLabel(times)}`,
     })
+  }
+
+  async function pasteToWorkers(targets) {
+    if (!clipboard?.timesList?.length) return
+    const list = targets.filter((w) => w.punchLookupEmail)
+    if (!list.length) {
+      setHoursMsg({
+        type: 'error',
+        text: 'Ningún destinatario tiene correo en planilla para guardar turnos.',
+      })
+      return
+    }
+    setPasteBusy(true)
+    setHoursMsg(null)
+    let okCount = 0
+    let failCount = 0
+    for (const w of list) {
+      const r = await handleSetShifts(
+        w,
+        clipboard.dayIso,
+        cloneCompleteShifts(clipboard.timesList),
+        { silent: true },
+      )
+      if (r?.ok && !r.skipped) okCount += 1
+      else if (!r?.ok && !r?.skipped) failCount += 1
+    }
+    setPasteBusy(false)
     await onHoursSaved?.()
+    setHoursMsg({
+      type: failCount ? 'error' : 'ok',
+      text: failCount
+        ? `Pegado en ${okCount} persona(s); falló en ${failCount}.`
+        : `Turnos pegados en ${okCount} persona(s) · ${fmtDateEs(clipboard.dayIso)}.`,
+    })
+  }
+
+  async function handlePasteAll() {
+    if (!clipboard) return
+    const others = workers.filter(
+      (w) => w.id !== clipboard.fromWorkerId && w.punchLookupEmail,
+    )
+    if (
+      !window.confirm(
+        `¿Pegar el turno de ${clipboard.fromName} (${fmtDateEs(clipboard.dayIso)}: ${formatTimesListLabel(clipboard.timesList)}) a ${others.length} trabajador(es)?`,
+      )
+    ) {
+      return
+    }
+    await pasteToWorkers(others)
+  }
+
+  async function handlePasteOne() {
+    if (!clipboard || !pasteTargetId) return
+    const w = workers.find((x) => String(x.id) === String(pasteTargetId))
+    if (!w) return
+    await pasteToWorkers([w])
   }
 
   async function handleDownloadDaily() {
@@ -507,23 +658,90 @@ export default function AdminPlanillaFichajesTab({
 
   return (
     <div className="admin-fichajes-tab">
-      <DayViewToolbar
-        reportDate={reportDate}
-        onReportDateChange={setReportDate}
-        minDate={minReportDate}
-        maxDate={maxReportDate}
-        showPastDays={showPastDays}
-        onTogglePast={() => setShowPastDays((v) => !v)}
-        pastCount={past.length}
-        showFutureDays={showFutureDays}
-        onToggleFuture={() => setShowFutureDays((v) => !v)}
-        futureCount={future.length}
-        onDownloadDaily={handleDownloadDaily}
-        onDownloadWeekly={handleDownloadWeekly}
-        downloadBusy={downloadBusy}
-        dateLabel="Día a revisar"
-        hintText="Elige el día que quieres revisar (útil después de medianoche: sigue en turno del día anterior). La tabla y el resumen de cada persona usan esa fecha. Los informes Excel usan el mismo día."
-      />
+      <div className="day-view-toolbar card subpanel">
+        <p className="label-up fichajes-day-picker-title">Día a editar</p>
+        <div className="fichajes-day-chips" role="group" aria-label="Elegir día">
+          {daySelectOptions.map((iso) => {
+            const active = iso === reportDate
+            const isToday = iso === todayIso
+            return (
+              <button
+                key={iso}
+                type="button"
+                className={
+                  active
+                    ? 'fichajes-day-chip fichajes-day-chip--active'
+                    : 'fichajes-day-chip'
+                }
+                aria-pressed={active}
+                onClick={() => setReportDate(iso)}
+              >
+                {isToday ? (
+                  <>
+                    <strong>Hoy</strong>
+                    <span className="fichajes-day-chip-sub">{fmtDateEs(iso)}</span>
+                  </>
+                ) : (
+                  <>
+                    <strong>{weekdayShort(weekdayMonSunFromDate(parseLocalDate(iso)))}</strong>
+                    <span className="fichajes-day-chip-sub">{fmtDateEs(iso)}</span>
+                    {iso < todayIso ? (
+                      <span className="fichajes-day-chip-tag">anterior</span>
+                    ) : (
+                      <span className="fichajes-day-chip-tag">próximo</span>
+                    )}
+                  </>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <div className="day-view-toolbar-row fichajes-day-toolbar-extra">
+          <label className="day-view-label fichajes-day-select-label">
+            O elige en la lista
+            <select
+              className="table-input fichajes-day-select"
+              value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)}
+            >
+              {daySelectOptions.map((iso) => (
+                <option key={iso} value={iso}>
+                  {dayOptionLabel(iso)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="secondary"
+            disabled={downloadBusy}
+            onClick={handleDownloadDaily}
+          >
+            {downloadBusy ? 'Generando…' : 'Informe del día (Excel)'}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={downloadBusy}
+            onClick={handleDownloadWeekly}
+          >
+            {downloadBusy ? 'Generando…' : 'Informe semana (Excel)'}
+          </button>
+          {reportDate !== todayIso ? (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setReportDate(todayIso)}
+            >
+              Volver a hoy
+            </button>
+          ) : null}
+        </div>
+        <p className="muted small day-view-toolbar-hint">
+          Pulsa un día de arriba (p. ej. <strong>anterior</strong>) para ver y editar esos
+          turnos. Por defecto estás en <strong>Hoy</strong>.
+        </p>
+      </div>
       {exportMsg ? (
         <p className={`hint ${exportMsg.type === 'error' ? 'error' : 'ok'}`}>
           {exportMsg.text}
@@ -532,11 +750,67 @@ export default function AdminPlanillaFichajesTab({
 
       <p className="muted small admin-fichajes-hint">
         En cada día puedes meter <strong>varios turnos</strong> (turno partido): pulsa{' '}
-        <strong>+ Añadir turno</strong> y completa entrada/salida del 2º tramo. Se guarda
-        al completar cada tramo; la columna resumen suma todas las horas del día. Si la
-        salida es más temprano que la entrada (p. ej. 22:00 → 04:00), cuenta al día
-        siguiente. Quitar o dejar vacío borra ese tramo.
+        <strong>+ Añadir turno</strong>. Usa <strong>Copiar</strong> y luego{' '}
+        <strong>Pegar</strong> en otra persona, o pega a todo el equipo / a alguien
+        concreto con la barra de abajo. Se guarda al completar cada tramo.
       </p>
+      {clipboard ? (
+        <div className="card subpanel fichajes-clipboard-bar">
+          <p className="muted small fichajes-clipboard-summary">
+            Portapapeles:{' '}
+            <strong>{clipboard.fromName}</strong> · {fmtDateEs(clipboard.dayIso)} ·{' '}
+            {formatTimesListLabel(clipboard.timesList)}
+          </p>
+          <div className="fichajes-clipboard-actions">
+            <button
+              type="button"
+              className="secondary"
+              disabled={pasteBusy}
+              onClick={handlePasteAll}
+            >
+              {pasteBusy ? 'Pegando…' : 'Pegar al resto del equipo'}
+            </button>
+            <label className="fichajes-clipboard-one">
+              <span className="muted small">O a alguien:</span>
+              <select
+                className="table-input"
+                value={pasteTargetId}
+                disabled={pasteBusy}
+                onChange={(e) => setPasteTargetId(e.target.value)}
+              >
+                <option value="">— Elegir persona —</option>
+                {workers
+                  .filter((w) => w.id !== clipboard.fromWorkerId)
+                  .map((w) => (
+                    <option key={w.id} value={String(w.id)}>
+                      {w.nombre}
+                      {!w.punchLookupEmail ? ' (sin correo)' : ''}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                className="secondary"
+                disabled={pasteBusy || !pasteTargetId}
+                onClick={handlePasteOne}
+              >
+                Pegar
+              </button>
+            </label>
+            <button
+              type="button"
+              className="secondary"
+              disabled={pasteBusy}
+              onClick={() => {
+                setClipboard(null)
+                setPasteTargetId('')
+              }}
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+      ) : null}
       {hoursMsg ? (
         <p className={`hint ${hoursMsg.type === 'error' ? 'error' : 'ok'}`}>
           {hoursMsg.text}
@@ -617,6 +891,10 @@ export default function AdminPlanillaFichajesTab({
                         viewDateIso={reportDate}
                         calendarTodayIso={todayIso}
                         rates={rates}
+                        clipboard={clipboard}
+                        onCopyDay={(iso, times) =>
+                          handleCopyDay(worker, iso, times)
+                        }
                         savingKey={
                           savingKey?.startsWith(`${worker.id}:`)
                             ? savingKey.slice(String(worker.id).length + 1)

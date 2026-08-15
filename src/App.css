@@ -1012,6 +1012,94 @@
   border-style: dashed;
 }
 
+.fichajes-day-select-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.fichajes-day-select {
+  min-width: 14rem;
+  max-width: 22rem;
+}
+
+.fichajes-day-picker-title {
+  margin: 0 0 0.55rem;
+}
+
+.fichajes-day-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.fichajes-day-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-width: 5.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fichajes-day-chip:hover {
+  border-color: color-mix(in srgb, var(--accent, #2563eb) 55%, var(--border));
+}
+
+.fichajes-day-chip--active {
+  border-color: var(--accent, #2563eb);
+  background: color-mix(in srgb, var(--accent, #2563eb) 12%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #2563eb) 35%, transparent);
+}
+
+.fichajes-day-chip-sub {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.fichajes-day-chip-tag {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.fichajes-day-toolbar-extra {
+  margin-top: 0.15rem;
+}
+
+.fichajes-clipboard-summary {
+  margin: 0 0 0.6rem;
+}
+
+.fichajes-clipboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+}
+
+.fichajes-clipboard-one {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.fichajes-clipboard-one select {
+  min-width: 10rem;
+  max-width: 16rem;
+}
+
 .admin-fichajes-hint {
   margin: 0 0 1rem;
 }
