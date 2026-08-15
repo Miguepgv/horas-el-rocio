@@ -15,26 +15,62 @@ function snapMinute(m) {
   )
 }
 
-function emptyShift() {
+export function emptyShift() {
   return { inH: '', inM: 0, outH: '', outM: 0 }
 }
 
-export function shiftTimesFromPunches(punches, dayIso) {
-  const shifts = paidShiftsByStartDay(punches ?? [], dayIso)
-  const closed = shifts.find((s) => !s.open && s.inAt && s.outAt)
-  if (!closed) return emptyShift()
-  const inAt = closed.inAt
-  const outAt = closed.outAt
-  return {
-    inH: inAt.getHours(),
-    inM: snapMinute(inAt.getMinutes()),
-    outH: outAt.getHours(),
-    outM: snapMinute(outAt.getMinutes()),
-  }
+export function shiftIsEmpty(t) {
+  return (
+    t == null ||
+    ((t.inH === '' || t.inH == null) && (t.outH === '' || t.outH == null))
+  )
 }
 
 export function shiftIsComplete(t) {
   return t && t.inH !== '' && t.inH != null && t.outH !== '' && t.outH != null
+}
+
+export function shiftIsPartial(t) {
+  return !shiftIsEmpty(t) && !shiftIsComplete(t)
+}
+
+/** Horas de un par entrada/salida (salida ≤ entrada → +1 día). */
+export function hoursFromShiftTimes(t) {
+  if (!shiftIsComplete(t)) return 0
+  const inMin = Number(t.inH) * 60 + Number(t.inM || 0)
+  let outMin = Number(t.outH) * 60 + Number(t.outM || 0)
+  if (outMin <= inMin) outMin += 24 * 60
+  return (outMin - inMin) / 60
+}
+
+export function totalHoursFromShiftTimesList(list) {
+  return (list ?? []).reduce((s, t) => s + hoursFromShiftTimes(t), 0)
+}
+
+/** @deprecated Preferir shiftTimesListFromPunches (turnos partidos). */
+export function shiftTimesFromPunches(punches, dayIso) {
+  const list = shiftTimesListFromPunches(punches, dayIso)
+  return list[0] ?? emptyShift()
+}
+
+/** Todos los turnos cerrados (y abiertos) del día, para turnos partidos. */
+export function shiftTimesListFromPunches(punches, dayIso) {
+  const shifts = paidShiftsByStartDay(punches ?? [], dayIso)
+  if (!shifts.length) return [emptyShift()]
+  return shifts.map((s) => {
+    if (!s.inAt) return emptyShift()
+    const row = {
+      inH: s.inAt.getHours(),
+      inM: snapMinute(s.inAt.getMinutes()),
+      outH: '',
+      outM: 0,
+    }
+    if (s.outAt && !s.open) {
+      row.outH = s.outAt.getHours()
+      row.outM = snapMinute(s.outAt.getMinutes())
+    }
+    return row
+  })
 }
 
 export function formatClock(h, m) {
@@ -82,12 +118,17 @@ function localDayRange(dayIso) {
   return { start, end }
 }
 
+function normalizeShiftList(timesList) {
+  const list = Array.isArray(timesList) ? timesList : timesList ? [timesList] : []
+  return list.filter((t) => !shiftIsEmpty(t))
+}
+
 /**
- * Sustituye el día por un turno entrada/salida.
- * Si falta entrada o salida, borra el día.
+ * Sustituye el día por uno o varios turnos entrada/salida (turno partido).
+ * Solo guarda turnos completos. Lista vacía o todos incompletos → borra el día.
  * Si la salida es ≤ la entrada, se cobra al día siguiente (cruza medianoche).
  */
-export async function replaceManualShiftForDay(supabase, userId, dayIso, times) {
+export async function replaceManualShiftsForDay(supabase, userId, dayIso, timesList) {
   if (!supabase || !userId || !dayIso) {
     return { ok: false, error: 'Falta trabajador o día.' }
   }
@@ -108,31 +149,43 @@ export async function replaceManualShiftForDay(supabase, userId, dayIso, times) 
     if (delErr) return { ok: false, error: delErr }
   }
 
-  if (!shiftIsComplete(times)) return { ok: true, cleared: true }
+  const complete = normalizeShiftList(timesList).filter(shiftIsComplete)
+  if (!complete.length) return { ok: true, cleared: true }
 
-  const inAt = atLocal(dayIso, times.inH, times.inM)
-  let outAt = atLocal(dayIso, times.outH, times.outM)
-  if (outAt.getTime() <= inAt.getTime()) {
-    outAt = new Date(outAt)
-    outAt.setDate(outAt.getDate() + 1)
+  const rows = []
+  let totalHours = 0
+  for (const times of complete) {
+    const inAt = atLocal(dayIso, times.inH, times.inM)
+    let outAt = atLocal(dayIso, times.outH, times.outM)
+    if (outAt.getTime() <= inAt.getTime()) {
+      outAt = new Date(outAt)
+      outAt.setDate(outAt.getDate() + 1)
+    }
+    totalHours += (outAt - inAt) / 3_600_000
+    rows.push(
+      {
+        user_id: userId,
+        punch_type: 'in',
+        punched_at: inAt.toISOString(),
+        created_by: null,
+        no_pay: false,
+      },
+      {
+        user_id: userId,
+        punch_type: 'out',
+        punched_at: outAt.toISOString(),
+        created_by: null,
+        no_pay: false,
+      },
+    )
   }
 
-  const { error: insErr } = await supabase.from('punches').insert([
-    {
-      user_id: userId,
-      punch_type: 'in',
-      punched_at: inAt.toISOString(),
-      created_by: null,
-      no_pay: false,
-    },
-    {
-      user_id: userId,
-      punch_type: 'out',
-      punched_at: outAt.toISOString(),
-      created_by: null,
-      no_pay: false,
-    },
-  ])
+  const { error: insErr } = await supabase.from('punches').insert(rows)
   if (insErr) return { ok: false, error: insErr }
-  return { ok: true, hours: (outAt - inAt) / 3_600_000 }
+  return { ok: true, hours: totalHours, shiftCount: complete.length }
+}
+
+/** @deprecated Usar replaceManualShiftsForDay */
+export async function replaceManualShiftForDay(supabase, userId, dayIso, times) {
+  return replaceManualShiftsForDay(supabase, userId, dayIso, [times])
 }

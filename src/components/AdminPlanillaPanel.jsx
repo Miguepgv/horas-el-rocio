@@ -745,6 +745,16 @@ export default function AdminPlanillaPanel() {
                       <td key={k} className="planilla-td-slot">
                         <input
                           className="table-input planilla-cell"
+                          title={
+                            String(k).endsWith('_b')
+                              ? '2º turno del día (turno partido). Ej: 17:00 A 22:00'
+                              : '1º turno del día. Ej: 09:00 A 14:00. Vacío o D = descanso'
+                          }
+                          placeholder={
+                            String(k).endsWith('_b')
+                              ? '17:00 A 22:00'
+                              : '09:00 A 14:00'
+                          }
                           value={row[k] ?? ''}
                           onChange={(e) =>
                             row.id
@@ -771,6 +781,12 @@ export default function AdminPlanillaPanel() {
             Si alguien no viene: <strong>Quitar</strong> (junto al nombre) y luego{' '}
             <strong>+ Añadir trabajador</strong> con el sustituto. También puedes cambiar
             solo el nombre. Al final pulsa <strong>Guardar todos</strong>.
+          </p>
+          <p className="muted small">
+            <strong>Turno partido:</strong> escribe el 1º tramo en la columna del día
+            (p. ej. <code>09:00 A 14:00</code>) y el 2º en la columna «· 2º» (p. ej.{' '}
+            <code>17:00 A 22:00</code>). En Turnos picados la suma del día suma ambos
+            tramos.
           </p>
         </>
       )}

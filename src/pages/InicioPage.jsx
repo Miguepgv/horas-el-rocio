@@ -29,7 +29,7 @@ import {
   friendlySupabaseError,
   isMissingTableError,
 } from '../lib/dbErrors.js'
-import { planillaRowToSlots } from '../lib/rocioPlanillaSchedule.js'
+import { planillaRowToSlots, plannedHoursForDay } from '../lib/rocioPlanillaSchedule.js'
 import { downloadMiHorarioXlsx } from '../lib/exportScheduleXlsx.js'
 import {
   buildDailyReportRows,
@@ -448,16 +448,19 @@ export default function InicioPage({ session, onSignOut }) {
         .sort((a, b) => a.slot_index - b.slot_index)
       let previsto = '—'
       if (slotList.length > 0) {
-        previsto = slotList
-          .map((sl) => {
-            if (sl.is_rest) return `Turno ${sl.slot_index}: Descanso`
-            const st = sl.start_time ? String(sl.start_time).slice(0, 5) : '—'
-            const en = sl.end_time ? String(sl.end_time).slice(0, 5) : '—'
-            let line = `Turno ${sl.slot_index}: Entrada ${st} → Salida ${en}`
-            if (sl.crosses_midnight) line += ' (+1 día)'
-            return line
-          })
-          .join('\n')
+        const lines = slotList.map((sl) => {
+          if (sl.is_rest) return `Turno ${sl.slot_index}: Descanso`
+          const st = sl.start_time ? String(sl.start_time).slice(0, 5) : '—'
+          const en = sl.end_time ? String(sl.end_time).slice(0, 5) : '—'
+          let line = `Turno ${sl.slot_index}: Entrada ${st} → Salida ${en}`
+          if (sl.crosses_midnight) line += ' (+1 día)'
+          return line
+        })
+        const hPrev = plannedHoursForDay(slotList, iso)
+        if (hPrev > 0) {
+          lines.push(`Total previsto: ${formatHoursMinutes(hPrev)}`)
+        }
+        previsto = lines.join('\n')
       }
       const fichado = formatFichadoPlainForExport(punches, iso, rateProfile)
       return { dia, previsto, fichado }
@@ -610,34 +613,46 @@ export default function InicioPage({ session, onSignOut }) {
             <span className="muted small">Horario previsto</span>
             <p className="today-sched-line schedule-split">
               {slotsToday.length > 0 ? (
-                slotsToday.map((sl) => (
-                  <span
-                    key={sl.id ?? `${sl.work_date}-${sl.slot_index}`}
-                    className="planned-slot-block"
-                  >
-                    <span className="muted small">Turno {sl.slot_index}</span>{' '}
-                    {sl.is_rest ? (
-                      <span className="muted">Descanso</span>
-                    ) : (
-                      <>
-                        <span className="badge-sched-in badge-h-prev-in">Entrada</span>{' '}
-                        <span className="time-strong time-h-prev-in">
-                          {sl.start_time
-                            ? String(sl.start_time).slice(0, 5)
-                            : '—'}
-                        </span>
-                        <span className="schedule-arrow">→</span>
-                        <span className="badge-sched-out badge-h-prev-out">Salida</span>{' '}
-                        <span className="time-strong time-h-prev-out">
-                          {sl.end_time ? String(sl.end_time).slice(0, 5) : '—'}
-                        </span>
-                        {sl.crosses_midnight ? (
-                          <span className="muted small"> (+1 día)</span>
-                        ) : null}
-                      </>
-                    )}
-                  </span>
-                ))
+                <>
+                  {slotsToday.map((sl) => (
+                    <span
+                      key={sl.id ?? `${sl.work_date}-${sl.slot_index}`}
+                      className="planned-slot-block"
+                    >
+                      <span className="muted small">Turno {sl.slot_index}</span>{' '}
+                      {sl.is_rest ? (
+                        <span className="muted">Descanso</span>
+                      ) : (
+                        <>
+                          <span className="badge-sched-in badge-h-prev-in">Entrada</span>{' '}
+                          <span className="time-strong time-h-prev-in">
+                            {sl.start_time
+                              ? String(sl.start_time).slice(0, 5)
+                              : '—'}
+                          </span>
+                          <span className="schedule-arrow">→</span>
+                          <span className="badge-sched-out badge-h-prev-out">Salida</span>{' '}
+                          <span className="time-strong time-h-prev-out">
+                            {sl.end_time ? String(sl.end_time).slice(0, 5) : '—'}
+                          </span>
+                          {sl.crosses_midnight ? (
+                            <span className="muted small"> (+1 día)</span>
+                          ) : null}
+                        </>
+                      )}
+                    </span>
+                  ))}
+                  {plannedHoursForDay(slotsToday, todayIso) > 0 ? (
+                    <span className="muted small planned-today-total">
+                      Total previsto:{' '}
+                      <strong>
+                        {formatHoursMinutes(
+                          plannedHoursForDay(slotsToday, todayIso),
+                        )}
+                      </strong>
+                    </span>
+                  ) : null}
+                </>
               ) : (
                 'Sin horario cargado.'
               )}
@@ -808,6 +823,7 @@ export default function InicioPage({ session, onSignOut }) {
                     const wd = weekdayMonSunFromDate(d)
                     const slotList = slotsForDate(iso)
                     const todayRow = isTodayIso(iso, todayIso)
+                    const hPrevisto = plannedHoursForDay(slotList, iso)
                     const planned =
                       slotList.length > 0 ? (
                         <div className="planned-stack">
@@ -841,6 +857,12 @@ export default function InicioPage({ session, onSignOut }) {
                               )}
                             </div>
                           ))}
+                          {hPrevisto > 0 ? (
+                            <div className="planned-day-footer muted small">
+                              Total previsto:{' '}
+                              <strong>{formatHoursMinutes(hPrevisto)}</strong>
+                            </div>
+                          ) : null}
                         </div>
                       ) : (
                         '—'

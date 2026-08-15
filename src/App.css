@@ -1205,6 +1205,44 @@
   gap: 0.35rem 0.45rem;
 }
 
+.manual-hours-day-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.manual-hours-shift-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.manual-hours-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.manual-hours-turno-label {
+  min-width: 1.6rem;
+  font-weight: 600;
+}
+
+.manual-hours-seg {
+  margin-left: 0.15rem;
+}
+
+.manual-hours-remove {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+}
+
+.planned-day-footer {
+  margin-top: 0.25rem;
+}
+
 .manual-hours-select {
   width: auto;
   min-width: 4.6rem;

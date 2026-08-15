@@ -205,3 +205,29 @@ export function planillaRowToSlots(
   }
   return slots
 }
+
+function clockToMinutes(t) {
+  if (!t) return null
+  const s = String(t).slice(0, 5)
+  const m = s.match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return null
+  return Number(m[1]) * 60 + Number(m[2])
+}
+
+/** Horas de un slot previsto (0 si descanso o incompleto). */
+export function plannedSlotHours(slot) {
+  if (!slot || slot.is_rest || !slot.start_time || !slot.end_time) return 0
+  const a = clockToMinutes(slot.start_time)
+  const b = clockToMinutes(slot.end_time)
+  if (a == null || b == null) return 0
+  let end = b
+  if (slot.crosses_midnight || end <= a) end += 24 * 60
+  return Math.max(0, (end - a) / 60)
+}
+
+/** Suma de horas previstas de los turnos de un día (turno partido incluido). */
+export function plannedHoursForDay(slots, dayIso) {
+  return (slots ?? [])
+    .filter((s) => s.work_date === dayIso && !s.is_rest)
+    .reduce((sum, s) => sum + plannedSlotHours(s), 0)
+}

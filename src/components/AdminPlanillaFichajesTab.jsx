@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { friendlySupabaseError } from '../lib/dbErrors.js'
 import { resolvePrimaryPunchUserId } from '../lib/adminPlanillaPunches.js'
@@ -34,10 +34,15 @@ import { rateLabelForProfile, workerRateProfile } from '../lib/elRocioRates.js'
 import {
   CLOCK_HOUR_OPTIONS,
   CLOCK_MINUTE_OPTIONS,
+  emptyShift,
   formatClock,
-  replaceManualShiftForDay,
+  hoursFromShiftTimes,
+  replaceManualShiftsForDay,
   shiftIsComplete,
-  shiftTimesFromPunches,
+  shiftIsEmpty,
+  shiftIsPartial,
+  shiftTimesListFromPunches,
+  totalHoursFromShiftTimesList,
 } from '../lib/manualDayHours.js'
 
 function fmtDateEs(isoYmd) {
@@ -49,17 +54,19 @@ function fmtDateEs(isoYmd) {
   })
 }
 
-function ClockPair({ times, disabled, onPatch, ariaDay }) {
+function ClockPair({ times, disabled, onPatch, ariaDay, label }) {
   const inH = times?.inH === '' || times?.inH == null ? '' : String(times.inH)
   const outH = times?.outH === '' || times?.outH == null ? '' : String(times.outH)
   const inM = String(times?.inM ?? 0)
   const outM = String(times?.outM ?? 0)
+  const hSeg = hoursFromShiftTimes(times)
   return (
     <div className="manual-hours-selects">
+      {label ? <span className="muted small manual-hours-turno-label">{label}</span> : null}
       <span className="muted small">E</span>
       <select
         className="table-input manual-hours-select"
-        aria-label={`Entrada hora ${ariaDay}`}
+        aria-label={`Entrada hora ${ariaDay}${label ? ` ${label}` : ''}`}
         disabled={disabled}
         value={inH}
         onChange={(e) =>
@@ -78,7 +85,7 @@ function ClockPair({ times, disabled, onPatch, ariaDay }) {
       </select>
       <select
         className="table-input manual-hours-select"
-        aria-label={`Entrada minutos ${ariaDay}`}
+        aria-label={`Entrada minutos ${ariaDay}${label ? ` ${label}` : ''}`}
         disabled={disabled || inH === ''}
         value={inM}
         onChange={(e) => onPatch({ inM: Number(e.target.value) })}
@@ -93,7 +100,7 @@ function ClockPair({ times, disabled, onPatch, ariaDay }) {
       <span className="muted small">S</span>
       <select
         className="table-input manual-hours-select"
-        aria-label={`Salida hora ${ariaDay}`}
+        aria-label={`Salida hora ${ariaDay}${label ? ` ${label}` : ''}`}
         disabled={disabled}
         value={outH}
         onChange={(e) =>
@@ -112,7 +119,7 @@ function ClockPair({ times, disabled, onPatch, ariaDay }) {
       </select>
       <select
         className="table-input manual-hours-select"
-        aria-label={`Salida minutos ${ariaDay}`}
+        aria-label={`Salida minutos ${ariaDay}${label ? ` ${label}` : ''}`}
         disabled={disabled || outH === ''}
         value={outM}
         onChange={(e) => onPatch({ outM: Number(e.target.value) })}
@@ -128,6 +135,101 @@ function ClockPair({ times, disabled, onPatch, ariaDay }) {
         Number(times.inH) * 60 + Number(times.inM) ? (
         <span className="muted small">(+1 día)</span>
       ) : null}
+      {hSeg > 0 ? (
+        <span className="muted small manual-hours-seg">
+          {formatHoursMinutes(hSeg)}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+function DayShiftEditor({
+  timesList,
+  disabled,
+  ariaDay,
+  onDraftChange,
+  onPersist,
+}) {
+  const list =
+    timesList?.length > 0 ? timesList : [emptyShift()]
+
+  /** No guardar si hay filas vacías a medias (p. ej. acaba de pulsar + Añadir turno). */
+  function readyToPersist(next) {
+    if (next.some(shiftIsPartial)) return false
+    const completes = next.filter(shiftIsComplete)
+    const empties = next.filter(shiftIsEmpty)
+    if (completes.length === 0) return true
+    return empties.length === 0
+  }
+
+  function commit(next, { persist } = { persist: false }) {
+    onDraftChange(next)
+    if (persist && readyToPersist(next)) {
+      onPersist?.(next)
+    }
+  }
+
+  function patchAt(index, patch) {
+    const next = list.map((t, i) => (i === index ? { ...t, ...patch } : t))
+    commit(next, { persist: true })
+  }
+
+  function removeAt(index) {
+    const next = list.filter((_, i) => i !== index)
+    commit(next.length ? next : [emptyShift()], { persist: true })
+  }
+
+  function addShift() {
+    // Solo UI: no guardar hasta que el nuevo tramo tenga entrada y salida.
+    commit([...list, emptyShift()], { persist: false })
+  }
+
+  const draftTotal = totalHoursFromShiftTimesList(list)
+
+  return (
+    <div className="manual-hours-day-stack">
+      {list.map((times, i) => (
+        <div key={i} className="manual-hours-shift-row">
+          <ClockPair
+            times={times}
+            disabled={disabled}
+            ariaDay={ariaDay}
+            label={list.length > 1 ? `T${i + 1}` : null}
+            onPatch={(patch) => patchAt(i, patch)}
+          />
+          {list.length > 1 || !shiftIsEmpty(times) ? (
+            <button
+              type="button"
+              className="secondary small manual-hours-remove"
+              disabled={disabled}
+              onClick={() => removeAt(i)}
+              aria-label={`Quitar turno ${i + 1} del ${ariaDay}`}
+            >
+              Quitar
+            </button>
+          ) : null}
+        </div>
+      ))}
+      <div className="manual-hours-day-actions">
+        <button
+          type="button"
+          className="secondary small"
+          disabled={disabled || list.length >= 4}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            addShift()
+          }}
+        >
+          + Añadir turno
+        </button>
+        {draftTotal > 0 ? (
+          <span className="muted small">
+            Suma turnos: <strong>{formatHoursMinutes(draftTotal)}</strong>
+          </span>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -139,21 +241,24 @@ function WorkerDayRows({
   calendarTodayIso,
   rates,
   savingKey,
-  onChangeShift,
+  onChangeShifts,
 }) {
   const fromPunches = useMemo(() => {
     const o = {}
-    for (const iso of dayList) o[iso] = shiftTimesFromPunches(punches, iso)
+    for (const iso of dayList) o[iso] = shiftTimesListFromPunches(punches, iso)
     return o
   }, [dayList, punches])
 
   const [draft, setDraft] = useState(fromPunches)
+  /** Días con filas extra en edición (turno partido aún sin guardar). */
+  const dirtyIsoRef = useRef(new Set())
 
   useEffect(() => {
     setDraft((prev) => {
       const next = { ...prev }
       for (const iso of dayList) {
         if (savingKey === iso) continue
+        if (dirtyIsoRef.current.has(iso)) continue
         next[iso] = fromPunches[iso]
       }
       return next
@@ -165,7 +270,7 @@ function WorkerDayRows({
     const wd = weekdayMonSunFromDate(d)
     const hPaid = workedPaidHoursOverlappingDay(punches, iso)
     const ePaid = paidEurosOverlappingDay(punches, iso, rates)
-    const times = draft[iso] ?? fromPunches[iso]
+    const timesList = draft[iso] ?? fromPunches[iso]
     const selected = iso === viewDateIso
     const calendarToday = isTodayIso(iso, calendarTodayIso)
     const saving = savingKey === iso
@@ -190,14 +295,17 @@ function WorkerDayRows({
           ) : null}
         </td>
         <td>
-          <ClockPair
-            times={times}
-            disabled={saving || !onChangeShift}
+          <DayShiftEditor
+            timesList={timesList}
+            disabled={saving || !onChangeShifts}
             ariaDay={fmtDateEs(iso)}
-            onPatch={(patch) => {
-              const next = { ...times, ...patch }
+            onDraftChange={(next) => {
+              dirtyIsoRef.current.add(iso)
               setDraft((prev) => ({ ...prev, [iso]: next }))
-              onChangeShift(iso, next)
+            }}
+            onPersist={(next) => {
+              dirtyIsoRef.current.delete(iso)
+              onChangeShifts?.(iso, next)
             }}
           />
           {saving ? <span className="muted small">Guardando…</span> : null}
@@ -295,7 +403,7 @@ export default function AdminPlanillaFichajesTab({
     [rows, eventWorkers, loginEmailRecords, punchByEmail],
   )
 
-  async function handleSetShift(worker, dayIso, times) {
+  async function handleSetShifts(worker, dayIso, timesList) {
     const key = worker.punchLookupEmail
     if (!key) {
       setHoursMsg({
@@ -304,19 +412,25 @@ export default function AdminPlanillaFichajesTab({
       })
       return
     }
-    const complete = shiftIsComplete(times)
-    const clearing = !complete
-    if (clearing) {
-      const had = shiftTimesFromPunches(
-        punchesForWorkerEntry(worker, punchByEmail),
-        dayIso,
-      )
-      if (!shiftIsComplete(had)) return
-    }
+    if ((timesList ?? []).some(shiftIsPartial)) return
+
+    const complete = (timesList ?? []).filter(shiftIsComplete)
+    const had = shiftTimesListFromPunches(
+      punchesForWorkerEntry(worker, punchByEmail),
+      dayIso,
+    ).filter(shiftIsComplete)
+
+    if (complete.length === 0 && had.length === 0) return
+
     setSavingKey(`${worker.id}:${dayIso}`)
     setHoursMsg(null)
     const userId = await resolvePrimaryPunchUserId(key, eventWorkers)
-    const result = await replaceManualShiftForDay(supabase, userId, dayIso, times)
+    const result = await replaceManualShiftsForDay(
+      supabase,
+      userId,
+      dayIso,
+      complete,
+    )
     setSavingKey(null)
     if (!result.ok) {
       setHoursMsg({
@@ -325,12 +439,22 @@ export default function AdminPlanillaFichajesTab({
       })
       return
     }
-    const label = complete
-      ? `${formatClock(times.inH, times.inM)} → ${formatClock(times.outH, times.outM)}`
-      : 'sin turno'
+    const label =
+      complete.length === 0
+        ? 'sin turnos'
+        : complete
+            .map(
+              (t) =>
+                `${formatClock(t.inH, t.inM)} → ${formatClock(t.outH, t.outM)}`,
+            )
+            .join(' · ')
+    const sumLabel =
+      complete.length > 1 && result.hours
+        ? ` (suma ${formatHoursMinutes(result.hours)})`
+        : ''
     setHoursMsg({
       type: 'ok',
-      text: `${worker.nombre} · ${fmtDateEs(dayIso)}: ${label}`,
+      text: `${worker.nombre} · ${fmtDateEs(dayIso)}: ${label}${sumLabel}`,
     })
     await onHoursSaved?.()
   }
@@ -407,9 +531,11 @@ export default function AdminPlanillaFichajesTab({
       ) : null}
 
       <p className="muted small admin-fichajes-hint">
-        En cada día elige <strong>entrada</strong> y <strong>salida</strong> (hora y
-        minutos). Se guarda al completar las dos. Si la salida es más temprano que la
-        entrada (p. ej. 22:00 → 04:00), cuenta al día siguiente. — borra el turno.
+        En cada día puedes meter <strong>varios turnos</strong> (turno partido): pulsa{' '}
+        <strong>+ Añadir turno</strong> y completa entrada/salida del 2º tramo. Se guarda
+        al completar cada tramo; la columna resumen suma todas las horas del día. Si la
+        salida es más temprano que la entrada (p. ej. 22:00 → 04:00), cuenta al día
+        siguiente. Quitar o dejar vacío borra ese tramo.
       </p>
       {hoursMsg ? (
         <p className={`hint ${hoursMsg.type === 'error' ? 'error' : 'ok'}`}>
@@ -472,7 +598,7 @@ export default function AdminPlanillaFichajesTab({
                   <thead>
                     <tr>
                       <th className="fichajes-sticky-day">Día</th>
-                      <th>Entrada → Salida</th>
+                      <th>Turnos (entrada → salida)</th>
                       <th>Resumen día</th>
                     </tr>
                   </thead>
@@ -496,9 +622,10 @@ export default function AdminPlanillaFichajesTab({
                             ? savingKey.slice(String(worker.id).length + 1)
                             : null
                         }
-                        onChangeShift={
+                        onChangeShifts={
                           worker.punchLookupEmail
-                            ? (iso, times) => handleSetShift(worker, iso, times)
+                            ? (iso, timesList) =>
+                                handleSetShifts(worker, iso, timesList)
                             : null
                         }
                       />
