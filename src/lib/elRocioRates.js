@@ -1,8 +1,7 @@
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 
-export const TARIFA_FINDE_OPTIONS = [10, 12]
-export const TARIFA_MIERCOLES_OPTIONS = [12, 15]
-export const TARIFA_LUNES_MARTES = 10
+export const TARIFA_VIE_MAR = 12
+export const TARIFA_MIERCOLES = 15
 
 function formatDateLocalISO(d) {
   const y = d.getFullYear()
@@ -16,35 +15,19 @@ function weekdayMonSun(d) {
   return j === 0 ? 7 : j
 }
 
-/**
- * Vie–Dom: 10 o 12 (según trabajador).
- * Lun–Mar: 10 todos.
- * Mié: 12 o 15 (según trabajador).
- */
-export function workerRateProfile(row) {
-  if (row && (row.finde === 10 || row.finde === 12)) {
-    return {
-      finde: row.finde === 12 ? 12 : 10,
-      miercoles: row.miercoles === 15 ? 15 : 12,
-    }
-  }
-  const finde = Number(row?.tarifa_finde) === 12 ? 12 : 10
-  const miercoles = Number(row?.tarifa_miercoles) === 15 ? 15 : 12
-  return { finde, miercoles }
+/** Tarifa fija del evento: vie–mar 12 €/h, mié 15 €/h (todos iguales). */
+export function workerRateProfile(_row) {
+  return { finde: TARIFA_VIE_MAR, miercoles: TARIFA_MIERCOLES }
 }
 
 /** @param {number} weekdayMonSun 1=lun … 7=dom */
 export function rateForWeekday(weekdayMonSun, profile) {
-  const { finde, miercoles } = workerRateProfile(profile)
-  if (weekdayMonSun === 1 || weekdayMonSun === 2) return TARIFA_LUNES_MARTES
-  if (weekdayMonSun === 3) return miercoles
-  if (weekdayMonSun === 5 || weekdayMonSun === 6 || weekdayMonSun === 7) return finde
-  return TARIFA_LUNES_MARTES
+  if (weekdayMonSun === 3) return TARIFA_MIERCOLES
+  return TARIFA_VIE_MAR
 }
 
-export function rateLabelForProfile(profile) {
-  const p = workerRateProfile(profile)
-  return `Vie–Dom ${p.finde} €/h · Lun–Mar 10 €/h · Mié ${p.miercoles} €/h`
+export function rateLabelForProfile(_profile) {
+  return `Vie–Mar ${TARIFA_VIE_MAR} €/h · Mié ${TARIFA_MIERCOLES} €/h`
 }
 
 /**
@@ -55,7 +38,7 @@ export function eurPerHourAt(d, profile) {
   const iso = formatDateLocalISO(d)
   const from = PAY_EVENT_EL_ROCIO.dateFrom
   const to = PAY_EVENT_EL_ROCIO.dateTo
-  if (iso < from || iso > to) return TARIFA_LUNES_MARTES
+  if (iso < from || iso > to) return TARIFA_VIE_MAR
   return rateForWeekday(weekdayMonSun(d), profile)
 }
 

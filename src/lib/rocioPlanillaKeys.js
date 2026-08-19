@@ -9,13 +9,13 @@ for (let i = 1; i <= ROCIO_PLANILLA_GRID_DAY_COUNT; i++) {
 export const ROCIO_PLANILLA_RATE_KEYS = ['tarifa_finde', 'tarifa_miercoles']
 
 export const ROCIO_PLANILLA_RATE_LABELS = {
-  tarifa_finde: 'Vie–Dom €/h',
+  tarifa_finde: 'Vie–Mar €/h',
   tarifa_miercoles: 'Mié €/h',
 }
 
 export const ROCIO_PLANILLA_RATE_TITLES = {
-  tarifa_finde: 'Viernes, sábado y domingo: 10 o 12 €/h según la persona.',
-  tarifa_miercoles: 'Miércoles: 12 o 15 €/h según la persona. Lunes y martes son 10 €/h para todos.',
+  tarifa_finde: 'Viernes a martes: 12 €/h para todos.',
+  tarifa_miercoles: 'Miércoles: 15 €/h para todos.',
 }
 
 export const ROCIO_PLANILLA_EXTRA_KEYS = [
@@ -44,8 +44,8 @@ export function emptyRocioPlanillaPayload() {
   const o = {
     nombre: '',
     correo: '',
-    tarifa_finde: '10',
-    tarifa_miercoles: '12',
+    tarifa_finde: '12',
+    tarifa_miercoles: '15',
     nomina_event_euros: '',
     gasoil_euros: '',
     parking_euros: '',

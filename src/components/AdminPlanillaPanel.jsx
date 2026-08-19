@@ -13,9 +13,6 @@ import {
   ROCIO_PLANILLA_EXTRA_KEYS_UI as EXTRA_KEYS_UI,
   ROCIO_PLANILLA_EXTRA_LABELS,
   ROCIO_PLANILLA_EXTRA_TITLES,
-  ROCIO_PLANILLA_RATE_KEYS as RATE_KEYS,
-  ROCIO_PLANILLA_RATE_LABELS,
-  ROCIO_PLANILLA_RATE_TITLES,
 } from '../lib/rocioPlanillaKeys.js'
 import { parsePlanillaWideCsv } from '../lib/csvSchedule.js'
 import { downloadPlanillaHorarioXlsx } from '../lib/exportScheduleXlsx.js'
@@ -34,8 +31,6 @@ import PlanillaFichajesModal from './PlanillaFichajesModal.jsx'
 import { AGOSTO_WORKER_NAMES } from '../data/agostoRoster.js'
 import { PAY_EVENT_EL_ROCIO } from '../data/payRules.js'
 import {
-  TARIFA_FINDE_OPTIONS,
-  TARIFA_MIERCOLES_OPTIONS,
   workerRateProfile,
 } from '../lib/elRocioRates.js'
 
@@ -213,7 +208,7 @@ export default function AdminPlanillaPanel() {
       setMsg({
         type: 'error',
         text:
-          'Faltan las columnas de tarifa (Vie–Dom / miércoles). Ejecuta en Supabase el archivo scripts/supabase_planilla_tarifas.sql y recarga la app.',
+          'Faltan las columnas de tarifa en Supabase. Ejecuta scripts/supabase_planilla_tarifas.sql y recarga la app.',
       })
     }
     return { planillaExtrasMissing, planillaRatesMissing }
@@ -497,7 +492,7 @@ export default function AdminPlanillaPanel() {
               {busy ? 'Guardando…' : 'Guardar todos los cambios'}
             </button>
             <p className="muted small">
-              Cambia tarifas, nómina, gasoil e incentivo en todas las filas y pulsa este
+              Cambia nómina, gasoil e incentivo en todas las filas y pulsa este
               botón una vez.
             </p>
           </div>
@@ -509,9 +504,8 @@ export default function AdminPlanillaPanel() {
               <strong>Turnos picados</strong> (entrada y salida de cada día).
             </p>
             <p className="muted small">
-              <strong>Tarifa:</strong> Vie–Dom 10 o 12 €/h (elige en cada fila). Lun y mar:
-              10 €/h todos. Miércoles: 12 o 15 €/h (elige en cada fila). Cambia todas las
-              filas y pulsa <strong>Guardar todos</strong>.
+              <strong>Tarifa (todos iguales):</strong> viernes a martes 12 €/h · miércoles
+              15 €/h. Al guardar se aplican estas tarifas a toda la planilla.
             </p>
             <p className="muted small">
               <strong>Fijo:</strong> en <strong>Nómina €</strong> pon el sueldo que ya cobra
@@ -593,15 +587,6 @@ export default function AdminPlanillaPanel() {
                 <tr>
                   <th className="planilla-th-nombre">Nombre</th>
                   <th className="planilla-th-correo">Correo (enlace)</th>
-                  {RATE_KEYS.map((rk) => (
-                    <th
-                      key={rk}
-                      className="planilla-th-rate"
-                      title={ROCIO_PLANILLA_RATE_TITLES[rk]}
-                    >
-                      {ROCIO_PLANILLA_RATE_LABELS[rk] ?? rk}
-                    </th>
-                  ))}
                   {EXTRA_KEYS_UI.map((ek) => (
                     <th
                       key={ek}
@@ -696,32 +681,6 @@ export default function AdminPlanillaPanel() {
                         />
                       </div>
                     </td>
-                    {RATE_KEYS.map((rk) => {
-                      const opts =
-                        rk === 'tarifa_finde'
-                          ? TARIFA_FINDE_OPTIONS
-                          : TARIFA_MIERCOLES_OPTIONS
-                      const cur = String(row[rk] ?? opts[0])
-                      return (
-                        <td key={rk} className="planilla-td-rate">
-                          <select
-                            className="table-input planilla-rate-select"
-                            value={opts.includes(Number(cur)) ? cur : String(opts[0])}
-                            onChange={(e) =>
-                              row.id
-                                ? patchLocal(row.id, rk, e.target.value)
-                                : patchDraft(row, { [rk]: e.target.value })
-                            }
-                          >
-                            {opts.map((n) => (
-                              <option key={n} value={String(n)}>
-                                {n} €
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      )
-                    })}
                     {EXTRA_KEYS_UI.map((ek) => (
                       <td key={ek} className="planilla-td-euro">
                         <input
